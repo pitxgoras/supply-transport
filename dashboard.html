@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Supply Transport</title>
+    <link rel="stylesheet" href="css/dashboard.css">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <svg class="logo-small" width="120" height="40" viewBox="0 0 120 40">
+                    <rect width="40" height="40" rx="5" fill="#1a3e6f"/>
+                    <text x="20" y="25" font-family="Arial" font-size="16" font-weight="bold" fill="white" text-anchor="middle">ST</text>
+                    <text x="50" y="22" font-family="Arial" font-size="14" font-weight="bold" fill="#1a3e6f">SUPPLY</text>
+                    <text x="50" y="35" font-family="Arial" font-size="11" fill="#e74c3c" font-weight="bold">TRANSPORT</text>
+                </svg>
+            </div>
+            
+            <div class="user-profile">
+                <img id="userAvatar" src="" alt="Avatar" class="avatar">
+                <div class="user-info">
+                    <span class="user-name"></span>
+                    <span class="user-role"></span>
+                    <span class="user-department"></span>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="#" class="nav-item active" data-page="overview">Panel Principal</a></li>
+                    <li><a href="#" class="nav-item" data-page="shipments">Envios Activos</a></li>
+                    <li><a href="#" class="nav-item" data-page="routes">Rutas Asignadas</a></li>
+                    <li><a href="#" class="nav-item" data-page="documents">Documentos</a></li>
+                    <li><a href="#" class="nav-item" data-page="reports">Reportes</a></li>
+                </ul>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button onclick="logout()" class="btn-logout">Cerrar Sesion</button>
+            </div>
+        </aside>
+        
+        <main class="main-content">
+            <header class="dashboard-header">
+                <h1>Panel de Control</h1>
+                <div class="header-actions">
+                    <span id="currentDateTime"></span>
+                    <button class="btn-notifications">Notificaciones</button>
+                </div>
+            </header>
+            
+            <div id="contentArea" class="content-area">
+                <!-- Vista General -->
+                <div id="overview" class="page active">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3>Envios del Dia</h3>
+                            <div class="stat-value">24</div>
+                            <div class="stat-trend positive">+3 vs ayer</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>En Transito</h3>
+                            <div class="stat-value">18</div>
+                            <div class="stat-trend">En ruta</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Entregados</h3>
+                            <div class="stat-value">142</div>
+                            <div class="stat-trend">Ultima semana</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Eficiencia</h3>
+                            <div class="stat-value">96%</div>
+                            <div class="stat-trend positive">+2%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card">
+                            <h3>Proximas Entregas</h3>
+                            <div class="delivery-list">
+                                <div class="delivery-item">
+                                    <span class="time">10:30 AM</span>
+                                    <span class="client">Industrias ABC</span>
+                                    <span class="status pending">Pendiente</span>
+                                </div>
+                                <div class="delivery-item">
+                                    <span class="time">12:15 PM</span>
+                                    <span class="client">Manufacturas XYZ</span>
+                                    <span class="status pending">Pendiente</span>
+                                </div>
+                                <div class="delivery-item">
+                                    <span class="time">14:00 PM</span>
+                                    <span class="client">Logistica Integral</span>
+                                    <span class="status in-transit">En ruta</span>
+                                </div>
+                                <div class="delivery-item">
+                                    <span class="time">16:30 PM</span>
+                                    <span class="client">Distribuidora Norte</span>
+                                    <span class="status pending">Pendiente</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="dashboard-card">
+                            <h3>Vehiculos Activos</h3>
+                            <div class="vehicle-status">
+                                <div class="vehicle-item">
+                                    <span>Unidad ST-045</span>
+                                    <span class="status in-transit">En ruta</span>
+                                    <span>Operador: Juan Perez</span>
+                                </div>
+                                <div class="vehicle-item">
+                                    <span>Unidad ST-128</span>
+                                    <span class="status in-transit">En ruta</span>
+                                    <span>Operador: Carlos Ruiz</span>
+                                </div>
+                                <div class="vehicle-item">
+                                    <span>Unidad ST-089</span>
+                                    <span class="status available">Disponible</span>
+                                    <span>Operador: Luis Garcia</span>
+                                </div>
+                                <div class="vehicle-item">
+                                    <span>Unidad ST-067</span>
+                                    <span class="status maintenance">Mantenimiento</span>
+                                    <span>Taller: Servicio Norte</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="dashboard-card full-width">
+                            <h3>Actividad Reciente</h3>
+                            <div class="activity-log">
+                                <div class="activity-item">
+                                    <span class="activity-time">08:45</span>
+                                    <span class="activity-desc">Inicio de jornada - Operador Juan Perez</span>
+                                </div>
+                                <div class="activity-item">
+                                    <span class="activity-time">09:20</span>
+                                    <span class="activity-desc">Carga completada - Unidad ST-045</span>
+                                </div>
+                                <div class="activity-item">
+                                    <span class="activity-time">09:35</span>
+                                    <span class="activity-desc">Salida a ruta - Guadalajara</span>
+                                </div>
+                                <div class="activity-item">
+                                    <span class="activity-time">10:15</span>
+                                    <span class="activity-desc">Entrega realizada - Cliente ABC Corp</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Otras paginas del dashboard -->
+                <div id="shipments" class="page">
+                    <h2>Envios Activos</h2>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID Envio</th>
+                                <th>Cliente</th>
+                                <th>Origen</th>
+                                <th>Destino</th>
+                                <th>Estado</th>
+                                <th>Fecha Estimada</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>ENV-2024-001</td>
+                                <td>Industrias Metalicas SA</td>
+                                <td>CDMX</td>
+                                <td>Monterrey</td>
+                                <td><span class="status in-transit">En Transito</span></td>
+                                <td>15/01/2024</td>
+                            </tr>
+                            <tr>
+                                <td>ENV-2024-002</td>
+                                <td>Comercializadora del Norte</td>
+                                <td>Guadalajara</td>
+                                <td>Tijuana</td>
+                                <td><span class="status pending">En Preparacion</span></td>
+                                <td>16/01/2024</td>
+                            </tr>
+                            <tr>
+                                <td>ENV-2024-003</td>
+                                <td>Manufacturas Tecnicas</td>
+                                <td>Queretaro</td>
+                                <td>Merida</td>
+                                <td><span class="status in-transit">En Transito</span></td>
+                                <td>18/01/2024</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="js/auth.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>
