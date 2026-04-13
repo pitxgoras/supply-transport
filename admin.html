@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Administrativo - Supply Transport</title>
+    <link rel="stylesheet" href="css/admin.css">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+    <div class="admin-container">
+        <aside class="admin-sidebar">
+            <div class="sidebar-header">
+                <h2>Admin Panel</h2>
+                <span class="user-name"></span>
+            </div>
+            
+            <nav class="admin-nav">
+                <ul>
+                    <li><a href="#" class="nav-item active" data-page="empleados">Gestion Empleados</a></li>
+                    <li><a href="#" class="nav-item" data-page="vehiculos">Gestion Flota</a></li>
+                    <li><a href="#" class="nav-item" data-page="clientes">Clientes</a></li>
+                    <li><a href="#" class="nav-item" data-page="reportes">Reportes Generales</a></li>
+                    <li><a href="#" class="nav-item" data-page="configuracion">Configuracion</a></li>
+                </ul>
+            </nav>
+            
+            <button onclick="logout()" class="btn-logout">Cerrar Sesion</button>
+        </aside>
+        
+        <main class="admin-main">
+            <header class="admin-header">
+                <h1>Panel Administrativo</h1>
+                <div class="admin-actions">
+                    <button class="btn-primary" onclick="exportData()">Exportar Datos</button>
+                </div>
+            </header>
+            
+            <div id="adminContent" class="admin-content">
+                <!-- Gestion de Empleados -->
+                <div id="empleados" class="admin-page active">
+                    <div class="page-header">
+                        <h2>Gestion de Empleados</h2>
+                        <button class="btn-add" onclick="addEmployee()">Agregar Empleado</button>
+                    </div>
+                    
+                    <div class="filters">
+                        <input type="text" placeholder="Buscar empleado..." id="searchEmployee">
+                        <select id="filterDepartment">
+                            <option value="">Todos los departamentos</option>
+                            <option value="operaciones">Operaciones</option>
+                            <option value="logistica">Logistica</option>
+                            <option value="administracion">Administracion</option>
+                            <option value="ti">TI</option>
+                        </select>
+                    </div>
+                    
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>ID Empleado</th>
+                                <th>Nombre</th>
+                                <th>Email</th>
+                                <th>Departamento</th>
+                                <th>Rol</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="employeesTable">
+                            <tr>
+                                <td>EMP001</td>
+                                <td>Administrador Sistema</td>
+                                <td>admin@supplytransport.com</td>
+                                <td>TI</td>
+                                <td>Administrador</td>
+                                <td><span class="status active">Activo</span></td>
+                                <td>
+                                    <button class="btn-edit">Editar</button>
+                                    <button class="btn-delete">Eliminar</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>EMP002</td>
+                                <td>Gerente Operaciones</td>
+                                <td>gerente@supplytransport.com</td>
+                                <td>Operaciones</td>
+                                <td>Gerente</td>
+                                <td><span class="status active">Activo</span></td>
+                                <td>
+                                    <button class="btn-edit">Editar</button>
+                                    <button class="btn-delete">Eliminar</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Gestion de Flota -->
+                <div id="vehiculos" class="admin-page">
+                    <div class="page-header">
+                        <h2>Gestion de Flota</h2>
+                        <button class="btn-add">Agregar Vehiculo</button>
+                    </div>
+                    
+                    <div class="fleet-stats">
+                        <div class="fleet-stat">
+                            <span>Total Vehiculos</span>
+                            <strong>150</strong>
+                        </div>
+                        <div class="fleet-stat">
+                            <span>En Operacion</span>
+                            <strong>128</strong>
+                        </div>
+                        <div class="fleet-stat">
+                            <span>Mantenimiento</span>
+                            <strong>22</strong>
+                        </div>
+                    </div>
+                    
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>ID Unidad</th>
+                                <th>Tipo</th>
+                                <th>Placas</th>
+                                <th>Operador Asignado</th>
+                                <th>Estado</th>
+                                <th>Ultimo Servicio</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>ST-045</td>
+                                <td>Tractocamion</td>
+                                <td>ABC-1234</td>
+                                <td>Juan Perez</td>
+                                <td><span class="status in-transit">En Ruta</span></td>
+                                <td>05/01/2024</td>
+                                <td>
+                                    <button class="btn-edit">Editar</button>
+                                    <button class="btn-service">Servicio</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="js/auth.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>

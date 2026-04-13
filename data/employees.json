@@ -1,0 +1,98 @@
+{
+  "employees": [
+    {
+      "id": "EMP001",
+      "email": "admin@supplytransport.com",
+      "name": "Administrador Sistema",
+      "role": "admin",
+      "department": "TI",
+      "permissions": ["all"],
+      "status": "active",
+      "hireDate": "2020-01-15",
+      "lastAccess": null
+    },
+    {
+      "id": "EMP002",
+      "email": "gerente@supplytransport.com",
+      "name": "Gerente Operaciones",
+      "role": "manager",
+      "department": "Operaciones",
+      "permissions": ["view_reports", "manage_shipments", "view_fleet"],
+      "status": "active",
+      "hireDate": "2021-03-10",
+      "lastAccess": null
+    },
+    {
+      "id": "EMP003",
+      "email": "supervisor@supplytransport.com",
+      "name": "Supervisor Flota",
+      "role": "supervisor",
+      "department": "Logistica",
+      "permissions": ["view_shipments", "assign_routes", "track_fleet"],
+      "status": "active",
+      "hireDate": "2022-06-20",
+      "lastAccess": null
+    },
+    {
+      "id": "EMP004",
+      "email": "operador1@supplytransport.com",
+      "name": "Juan Perez Lopez",
+      "role": "operator",
+      "department": "Operaciones",
+      "permissions": ["view_assigned_routes", "update_shipment_status"],
+      "status": "active",
+      "hireDate": "2023-02-01",
+      "lastAccess": null
+    },
+    {
+      "id": "EMP005",
+      "email": "operador2@supplytransport.com",
+      "name": "Carlos Ruiz Garcia",
+      "role": "operator",
+      "department": "Operaciones",
+      "permissions": ["view_assigned_routes", "update_shipment_status"],
+      "status": "active",
+      "hireDate": "2023-05-15",
+      "lastAccess": null
+    }
+  ],
+  "departments": [
+    {
+      "id": "TI",
+      "name": "Tecnologias de Informacion",
+      "manager": "EMP001"
+    },
+    {
+      "id": "Operaciones",
+      "name": "Operaciones",
+      "manager": "EMP002"
+    },
+    {
+      "id": "Logistica",
+      "name": "Logistica",
+      "manager": "EMP003"
+    }
+  ],
+  "roles": [
+    {
+      "id": "admin",
+      "name": "Administrador",
+      "level": 5
+    },
+    {
+      "id": "manager",
+      "name": "Gerente",
+      "level": 4
+    },
+    {
+      "id": "supervisor",
+      "name": "Supervisor",
+      "level": 3
+    },
+    {
+      "id": "operator",
+      "name": "Operador",
+      "level": 2
+    }
+  ]
+}
