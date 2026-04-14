@@ -1,9 +1,5 @@
 # SUPPLY TRANSPORT S.A.C
 
-"INSERTAR PDF"
-
-SUPERVISAR HTMLS.
-
-file:///C:/...../admin.html
-file:///C:/...../dashboard.html
-file:///C:/...../index.html
+Version 2.13.14042026
+Requesito Funcionales: Correos Funcionales
+Mejoras continuas: PRONTO

@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel Administrativo - Supply Transport</title>
     <link rel="stylesheet" href="css/admin.css">
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
     <div class="admin-container">
@@ -21,37 +20,50 @@
                     <li><a href="#" class="nav-item" data-page="vehiculos">Gestion Flota</a></li>
                     <li><a href="#" class="nav-item" data-page="clientes">Clientes</a></li>
                     <li><a href="#" class="nav-item" data-page="reportes">Reportes Generales</a></li>
-                    <li><a href="#" class="nav-item" data-page="configuracion">Configuracion</a></li>
+                    <li class="admin-only"><a href="#" class="nav-item" data-page="configuracion">Configuracion Sistema</a></li>
+                    <li class="admin-only"><a href="#" class="nav-item" data-page="usuarios">Gestion Usuarios</a></li>
                 </ul>
             </nav>
             
-            <button onclick="logout()" class="btn-logout">Cerrar Sesion</button>
+            <button id="logoutBtn" class="btn-logout">Cerrar Sesion</button>
         </aside>
         
         <main class="admin-main">
             <header class="admin-header">
                 <h1>Panel Administrativo</h1>
                 <div class="admin-actions">
+                    <span class="user-role"></span>
                     <button class="btn-primary" onclick="exportData()">Exportar Datos</button>
                 </div>
             </header>
             
             <div id="adminContent" class="admin-content">
-                <!-- Gestion de Empleados -->
                 <div id="empleados" class="admin-page active">
                     <div class="page-header">
                         <h2>Gestion de Empleados</h2>
-                        <button class="btn-add" onclick="addEmployee()">Agregar Empleado</button>
+                        <button class="btn-add" onclick="showAddEmployeeModal()">Agregar Empleado</button>
                     </div>
                     
                     <div class="filters">
                         <input type="text" placeholder="Buscar empleado..." id="searchEmployee">
                         <select id="filterDepartment">
                             <option value="">Todos los departamentos</option>
-                            <option value="operaciones">Operaciones</option>
-                            <option value="logistica">Logistica</option>
-                            <option value="administracion">Administracion</option>
-                            <option value="ti">TI</option>
+                            <option value="TI">TI</option>
+                            <option value="Operaciones">Operaciones</option>
+                            <option value="Logistica">Logistica</option>
+                            <option value="Almacen">Almacen</option>
+                            <option value="Comercial">Comercial</option>
+                            <option value="Recursos Humanos">Recursos Humanos</option>
+                            <option value="Finanzas">Finanzas</option>
+                            <option value="Calidad">Calidad</option>
+                            <option value="Mantenimiento">Mantenimiento</option>
+                        </select>
+                        <select id="filterRole">
+                            <option value="">Todos los roles</option>
+                            <option value="admin">Administrador</option>
+                            <option value="manager">Gerente</option>
+                            <option value="supervisor">Supervisor</option>
+                            <option value="operator">Operador</option>
                         </select>
                     </div>
                     
@@ -68,35 +80,10 @@
                             </tr>
                         </thead>
                         <tbody id="employeesTable">
-                            <tr>
-                                <td>EMP001</td>
-                                <td>Administrador Sistema</td>
-                                <td>admin@supplytransport.com</td>
-                                <td>TI</td>
-                                <td>Administrador</td>
-                                <td><span class="status active">Activo</span></td>
-                                <td>
-                                    <button class="btn-edit">Editar</button>
-                                    <button class="btn-delete">Eliminar</button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>EMP002</td>
-                                <td>Gerente Operaciones</td>
-                                <td>gerente@supplytransport.com</td>
-                                <td>Operaciones</td>
-                                <td>Gerente</td>
-                                <td><span class="status active">Activo</span></td>
-                                <td>
-                                    <button class="btn-edit">Editar</button>
-                                    <button class="btn-delete">Eliminar</button>
-                                </td>
-                            </tr>
                         </tbody>
                     </table>
                 </div>
                 
-                <!-- Gestion de Flota -->
                 <div id="vehiculos" class="admin-page">
                     <div class="page-header">
                         <h2>Gestion de Flota</h2>
@@ -143,14 +130,113 @@
                                     <button class="btn-service">Servicio</button>
                                 </td>
                             </tr>
+                            <tr>
+                                <td>ST-128</td>
+                                <td>Camion Sencillo</td>
+                                <td>XYZ-5678</td>
+                                <td>Carlos Ruiz</td>
+                                <td><span class="status in-transit">En Ruta</span></td>
+                                <td>10/01/2024</td>
+                                <td>
+                                    <button class="btn-edit">Editar</button>
+                                    <button class="btn-service">Servicio</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>ST-089</td>
+                                <td>Utilitario</td>
+                                <td>DEF-9012</td>
+                                <td>Luis Garcia</td>
+                                <td><span class="status available">Disponible</span></td>
+                                <td>12/01/2024</td>
+                                <td>
+                                    <button class="btn-edit">Editar</button>
+                                    <button class="btn-service">Servicio</button>
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
+                </div>
+
+                <div id="clientes" class="admin-page">
+                    <h2>Gestion de Clientes</h2>
+                    <p>Contenido de clientes...</p>
+                </div>
+
+                <div id="reportes" class="admin-page">
+                    <h2>Reportes Generales</h2>
+                    <p>Contenido de reportes...</p>
+                </div>
+
+                <div id="configuracion" class="admin-page">
+                    <h2>Configuracion del Sistema</h2>
+                    <p>Acceso exclusivo para administradores...</p>
+                </div>
+
+                <div id="usuarios" class="admin-page">
+                    <h2>Gestion de Usuarios</h2>
+                    <p>Acceso exclusivo para administradores...</p>
                 </div>
             </div>
         </main>
     </div>
+
+    <div id="employeeModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeEmployeeModal()">&times;</span>
+            <h2 id="modalTitle">Agregar Empleado</h2>
+            <form id="employeeForm">
+                <input type="hidden" id="employeeId">
+                <div class="form-group">
+                    <label>Nombre Completo:</label>
+                    <input type="text" id="empName" required>
+                </div>
+                <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" id="empEmail" required>
+                </div>
+                <div class="form-group">
+                    <label>Password:</label>
+                    <input type="password" id="empPassword" required>
+                </div>
+                <div class="form-group">
+                    <label>Departamento:</label>
+                    <select id="empDepartment" required>
+                        <option value="TI">TI</option>
+                        <option value="Operaciones">Operaciones</option>
+                        <option value="Logistica">Logistica</option>
+                        <option value="Almacen">Almacen</option>
+                        <option value="Comercial">Comercial</option>
+                        <option value="Recursos Humanos">Recursos Humanos</option>
+                        <option value="Finanzas">Finanzas</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Rol:</label>
+                    <select id="empRole" required>
+                        <option value="admin">Administrador</option>
+                        <option value="manager">Gerente</option>
+                        <option value="supervisor">Supervisor</option>
+                        <option value="operator">Operador</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Estado:</label>
+                    <select id="empStatus" required>
+                        <option value="active">Activo</option>
+                        <option value="inactive">Inactivo</option>
+                    </select>
+                </div>
+                <div class="modal-buttons">
+                    <button type="submit" class="btn-primary">Guardar</button>
+                    <button type="button" class="btn-secondary" onclick="closeEmployeeModal()">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
     
-    <script src="js/auth.js"></script>
+    <script src="js/employees.js"></script>
+    <script src="js/session.js"></script>
     <script src="js/admin.js"></script>
 </body>
 </html>

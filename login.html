@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Supply Transport</title>
+    <link rel="stylesheet" href="css/login.css">
+</head>
+<body>
+    <!-- Boton para regresar al inicio -->
+    <a href="index.html" class="btn-back-home">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        Regresar al Inicio
+    </a>
+
+    <div class="login-container">
+        <div class="login-box">
+            <div class="login-header">
+                <svg class="logo-large" width="200" height="80" viewBox="0 0 200 80">
+                    <rect width="60" height="60" rx="8" fill="#1a3e6f"/>
+                    <text x="30" y="38" font-family="Arial" font-size="28" font-weight="bold" fill="white" text-anchor="middle">ST</text>
+                    <text x="75" y="35" font-family="Arial" font-size="22" font-weight="bold" fill="#1a3e6f">SUPPLY</text>
+                    <text x="75" y="55" font-family="Arial" font-size="16" fill="#e74c3c" font-weight="bold">TRANSPORT</text>
+                </svg>
+                <h2>Acceso al Sistema</h2>
+                <p>Ingrese sus credenciales de empleado</p>
+            </div>
+            
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label for="email">Correo Electronico</label>
+                    <input type="email" id="email" name="email" required 
+                           placeholder="empleado@supplytransport.com">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Contrasena</label>
+                    <input type="password" id="password" name="password" required 
+                           placeholder="Ingrese su contrasena">
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="remember"> Recordar sesion
+                    </label>
+                </div>
+                
+                <button type="submit" class="btn-login-submit">Iniciar Sesion</button>
+                
+                <div id="errorMessage" class="error-message"></div>
+            </form>
+            
+            <div class="login-footer">
+                <p>Credenciales de prueba:</p>
+                <div class="test-credentials">
+                    <p><strong>Admin:</strong> admin@supplytransport.com / admin123</p>
+                    <p><strong>Gerente:</strong> gerente@supplytransport.com / manager123</p>
+                    <p><strong>Supervisor:</strong> supervisor@supplytransport.com / super123</p>
+                    <p><strong>Empleado:</strong> empleado1@supplytransport.com / emp123</p>
+                </div>
+                <p class="help-text">Solo acceso para empleados autorizados</p>
+            </div>
+        </div>
+    </div>
+    
+    <script src="js/employees.js"></script>
+    <script src="js/login.js"></script>
+</body>
+</html>
