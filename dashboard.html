@@ -2,20 +2,23 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>Dashboard - Supply Transport</title>
     <link rel="stylesheet" href="css/dashboard.css">
 </head>
 <body>
     <div class="dashboard-container">
-        <aside class="sidebar">
+        <!-- SIDEBAR -->
+        <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <svg class="logo-small" width="120" height="40" viewBox="0 0 120 40">
-                    <rect width="40" height="40" rx="5" fill="#1a3e6f"/>
-                    <text x="20" y="25" font-family="Arial" font-size="16" font-weight="bold" fill="white" text-anchor="middle">ST</text>
-                    <text x="50" y="22" font-family="Arial" font-size="14" font-weight="bold" fill="white">SUPPLY</text>
-                    <text x="50" y="35" font-family="Arial" font-size="11" fill="#e74c3c" font-weight="bold">TRANSPORT</text>
-                </svg>
+                <div class="logo-area">
+                    <svg width="40" height="40" viewBox="0 0 40 40">
+                        <rect width="40" height="40" rx="5" fill="#1a3e6f"/>
+                        <text x="20" y="25" font-family="Arial" font-size="16" font-weight="bold" fill="white" text-anchor="middle">ST</text>
+                    </svg>
+                    <span class="logo-text">SUPPLY TRANSPORT</span>
+                </div>
+                <button class="sidebar-toggle" id="sidebarToggle">☰</button>
             </div>
             
             <div class="user-profile">
@@ -30,9 +33,8 @@
             <nav class="sidebar-nav">
                 <ul>
                     <li><a href="#" class="nav-item active" data-page="overview">Panel Principal</a></li>
-                    <li><a href="#" class="nav-item" data-page="shipments">Envios Activos</a></li>
                     <li><a href="#" class="nav-item" data-page="routes">Rutas Asignadas</a></li>
-                    <li><a href="#" class="nav-item" data-page="documents">Documentos</a></li>
+                    <li><a href="#" class="nav-item" data-page="documents">Documentos y Fotos</a></li>
                     <li><a href="#" class="nav-item" data-page="reports">Reportes</a></li>
                 </ul>
             </nav>
@@ -42,16 +44,17 @@
             </div>
         </aside>
         
-        <main class="main-content">
+        <!-- CONTENIDO PRINCIPAL -->
+        <main class="main-content" id="mainContent">
             <header class="dashboard-header">
                 <h1>Panel de Control</h1>
                 <div class="header-actions">
                     <span id="currentDateTime"></span>
-                    <button class="btn-notifications">Notificaciones</button>
                 </div>
             </header>
             
             <div id="contentArea" class="content-area">
+                <!-- PANEL PRINCIPAL -->
                 <div id="overview" class="page active">
                     <div class="stats-grid">
                         <div class="stat-card">
@@ -153,66 +156,148 @@
                     </div>
                 </div>
                 
-                <div id="shipments" class="page">
-                    <h2>Envios Activos</h2>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>ID Envio</th>
-                                <th>Cliente</th>
-                                <th>Origen</th>
-                                <th>Destino</th>
-                                <th>Estado</th>
-                                <th>Fecha Estimada</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>ENV-2024-001</td>
-                                <td>Industrias Metalicas SA</td>
-                                <td>CDMX</td>
-                                <td>Monterrey</td>
-                                <td><span class="status in-transit">En Transito</span></td>
-                                <td>15/01/2024</td>
-                            </tr>
-                            <tr>
-                                <td>ENV-2024-002</td>
-                                <td>Comercializadora del Norte</td>
-                                <td>Guadalajara</td>
-                                <td>Tijuana</td>
-                                <td><span class="status pending">En Preparacion</span></td>
-                                <td>16/01/2024</td>
-                            </tr>
-                            <tr>
-                                <td>ENV-2024-003</td>
-                                <td>Manufacturas Tecnicas</td>
-                                <td>Queretaro</td>
-                                <td>Merida</td>
-                                <td><span class="status in-transit">En Transito</span></td>
-                                <td>18/01/2024</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
+                <!-- RUTAS ASIGNADAS -->
                 <div id="routes" class="page">
                     <h2>Rutas Asignadas</h2>
-                    <p>Contenido de rutas asignadas...</p>
+                    
+                    <!-- RUTA ACTIVA -->
+                    <div class="active-route-card">
+                        <div class="route-header">
+                            <h3>Ruta Activa</h3>
+                            <span class="route-badge in-progress">En Progreso</span>
+                        </div>
+                        <div class="route-map-simulator">
+                            <div class="map-points">
+                                <div class="map-point start">
+                                    <span class="point-icon">●</span>
+                                    <span class="point-label">Lima</span>
+                                </div>
+                                <div class="map-progress-bar">
+                                    <div class="progress-fill" style="width: 65%"></div>
+                                </div>
+                                <div class="map-point current">
+                                    <span class="point-icon">📍</span>
+                                    <span class="point-label">Actual</span>
+                                </div>
+                                <div class="map-progress-bar">
+                                    <div class="progress-fill" style="width: 0%"></div>
+                                </div>
+                                <div class="map-point end">
+                                    <span class="point-icon">●</span>
+                                    <span class="point-label">Huacho</span>
+                                </div>
+                            </div>
+                            <div class="route-info">
+                                <span>R001 - Lima a Huacho</span>
+                                <span>ETA: 14:30</span>
+                                <span>Distancia: 148 km</span>
+                            </div>
+                            <button class="btn-update-progress" onclick="updateRouteProgress()">Actualizar Progreso</button>
+                        </div>
+                    </div>
+                    
+                    <!-- LISTA DE RUTAS -->
+                    <h3>Todas las Rutas</h3>
+                    <div class="routes-list-container" id="routesListContainer">
+                        <!-- Se carga dinamicamente -->
+                    </div>
                 </div>
-
+                
+                <!-- DOCUMENTOS Y FOTOS -->
                 <div id="documents" class="page">
-                    <h2>Documentos</h2>
-                    <p>Contenido de documentos...</p>
+                    <h2>Documentos y Fotos</h2>
+                    
+                    <div class="upload-section">
+                        <h3>Subir Documento o Foto</h3>
+                        <form id="uploadForm" enctype="multipart/form-data">
+                            <div class="file-input-wrapper">
+                                <input type="file" id="fileInput" accept="image/*,.pdf,.doc,.docx" multiple>
+                                <label for="fileInput" class="file-label">Seleccionar Archivos</label>
+                                <span id="fileCount" class="file-count"></span>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Tipo de Documento:</label>
+                                <select id="docType">
+                                    <option value="factura">Factura</option>
+                                    <option value="guia">Guia de Envio</option>
+                                    <option value="foto_carga">Foto de Carga</option>
+                                    <option value="foto_entrega">Foto de Entrega</option>
+                                    <option value="foto_vehiculo">Foto de Vehiculo</option>
+                                    <option value="otro">Otro</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Descripcion:</label>
+                                <textarea id="docDescription" rows="3" placeholder="Describa el documento o foto..."></textarea>
+                            </div>
+                            
+                            <button type="submit" class="btn-primary">Subir Archivos</button>
+                        </form>
+                    </div>
+                    
+                    <div class="documents-list">
+                        <h3>Documentos Recientes</h3>
+                        <div class="doc-grid" id="documentsGrid"></div>
+                    </div>
                 </div>
-
+                
+                <!-- REPORTES -->
                 <div id="reports" class="page">
                     <h2>Reportes</h2>
-                    <p>Contenido de reportes...</p>
+                    
+                    <div class="reports-filters">
+                        <select id="reportStatusFilter">
+                            <option value="">Todos los estados</option>
+                            <option value="pending">Pendientes</option>
+                            <option value="approved">Realizados</option>
+                            <option value="rejected">Rechazados</option>
+                        </select>
+                        <button class="btn-primary" onclick="createNewReport()">+ Nuevo Reporte</button>
+                    </div>
+                    
+                    <div class="reports-list" id="reportsList"></div>
                 </div>
             </div>
         </main>
     </div>
-    
+
+    <!-- MODAL NUEVO REPORTE -->
+    <div id="reportModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeReportModal()">&times;</span>
+            <h3>Crear Nuevo Reporte</h3>
+            <form id="reportForm">
+                <div class="form-group">
+                    <label>Tipo de Reporte:</label>
+                    <select id="reportType" required>
+                        <option value="incidencia">Incidencia en Ruta</option>
+                        <option value="retraso">Retraso</option>
+                        <option value="danos">Danos en Carga</option>
+                        <option value="accidente">Accidente</option>
+                        <option value="otro">Otro</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Descripcion:</label>
+                    <textarea id="reportDescription" rows="4" required></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Adjuntar Foto (opcional):</label>
+                    <input type="file" id="reportImage" accept="image/*" capture="environment">
+                </div>
+                
+                <div class="modal-buttons">
+                    <button type="submit" class="btn-primary">Enviar Reporte</button>
+                    <button type="button" class="btn-secondary" onclick="closeReportModal()">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="js/employees.js"></script>
     <script src="js/session.js"></script>
     <script src="js/dashboard.js"></script>
