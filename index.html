@@ -3,87 +3,143 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Supply Transport SAC- Tu Carga Segura</title>
+    <title>Supply Transport SAC | Tu Carga Segura</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <header class="header">
+    <!-- HEADER ANIMADO -->
+    <header class="header" id="header">
         <nav class="navbar">
             <div class="logo-container">
-                <svg class="logo" width="200" height="60" viewBox="0 0 200 60">
-                    <rect width="60" height="60" rx="8" fill="#1a3e6f"/>
-                    <text x="30" y="38" font-family="Arial" font-size="24" font-weight="bold" fill="white" text-anchor="middle">ST</text>
-                    <text x="75" y="32" font-family="Arial" font-size="20" font-weight="bold" fill="#1a3e6f">SUPPLY</text>
-                    <text x="75" y="50" font-family="Arial" font-size="16" fill="#e74c3c" font-weight="bold">TRANSPORT</text>
-                </svg>
+                <img src="assets/images/Logo.Suplly.Tranport.Sac.jpg" alt="Supply Transport Logo" class="logo-img">
+                <div class="logo-text-container">
+                    <span class="logo-title">SUPPLY TRANSPORT</span>
+                    <span class="logo-subtitle">Tu Carga Segura</span>
+                </div>
             </div>
-            <ul class="nav-menu">
-                <li><a href="#inicio">Inicio</a></li>
-                <li><a href="#servicios">Servicios</a></li>
-                <li><a href="#flota">Flota</a></li>
-                <li><a href="#cobertura">Cobertura</a></li>
-                <li><a href="#contacto">Contacto</a></li>
-                <li><a href="login.html" class="btn-login">Acceso Empleados</a></li>
-            </ul>
+            
+            <div class="nav-menu-container">
+                <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                
+                <ul class="nav-menu" id="navMenu">
+                    <li><a href="#inicio" class="nav-link active">Inicio</a></li>
+                    <li><a href="#servicios" class="nav-link">Servicios</a></li>
+                    <li><a href="#flota" class="nav-link">Flota</a></li>
+                    <li><a href="#cobertura" class="nav-link">Cobertura</a></li>
+                    <li><a href="#contacto" class="nav-link">Contacto</a></li>
+                    <li><a href="login.html" class="btn-login">Acceso Empleados</a></li>
+                </ul>
+            </div>
         </nav>
     </header>
 
     <main>
+        <!-- HERO SECTION CON ANIMACIONES -->
         <section id="inicio" class="hero">
+            <div class="hero-overlay"></div>
             <div class="hero-content">
-                <h1>Supply Transport S.A.C.</h1>
-                <p class="slogan">Nos aseguramos que cada servicio brindado se encuentre en optimas condiciones y sea siempre el mejor para nuestros clientes. Es por eso que nos comprometemos al máximo en cada trabajo.</p>
-                <div class="hero-stats">
+                <h1 class="hero-title animate-fadeInUp">
+                    <span class="title-line1">Supply Transport</span>
+                    <span class="title-line2">Tu Carga Segura</span>
+                </h1>
+                <p class="hero-slogan animate-fadeInUp delay-1">
+                    Soluciones logisticas integrales para el transporte de suministros industriales
+                </p>
+                <div class="hero-stats animate-fadeInUp delay-2">
                     <div class="stat-item">
-                        <span class="stat-number">10+</span>
+                        <span class="stat-number" data-target="11">0</span>
                         <span class="stat-label">Anos de experiencia</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-number">200+</span>
+                        <span class="stat-number" data-target="150">0</span>
                         <span class="stat-label">Clientes activos</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-number">90%</span>
+                        <span class="stat-number" data-target="95">0</span>
                         <span class="stat-label">Entregas a tiempo</span>
                     </div>
                 </div>
+                <div class="hero-buttons animate-fadeInUp delay-3">
+                    <a href="#servicios" class="btn-primary">Nuestros Servicios</a>
+                    <a href="#contacto" class="btn-outline">Contactanos</a>
+                </div>
+            </div>
+            <div class="scroll-indicator">
+                <span class="scroll-text">Desliza para descubrir</span>
+                <div class="scroll-line"></div>
             </div>
         </section>
 
+        <!-- SERVICIOS CON ANIMACIONES -->
         <section id="servicios" class="services">
-            <h2>Nuestros Servicios</h2>
+            <div class="section-header">
+                <h2 class="section-title">Nuestros Servicios</h2>
+                <p class="section-subtitle">Soluciones disenadas para optimizar su cadena de suministro</p>
+            </div>
+            
             <div class="services-grid">
-                <div class="service-card">
+                <div class="service-card animate-on-scroll">
+                    <div class="service-icon">
+                        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ee2c28" stroke-width="1.5">
+                            <rect x="2" y="7" width="20" height="14" rx="2" />
+                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                        </svg>
+                    </div>
                     <h3>Transporte de Carga General</h3>
-                    <p>Servicio de transporte terrestre de mercancias y suministros industriales con cobertura nacional.</p>
-                    <ul>
+                    <p>Servicio de transporte terrestre para todo tipo de mercancias y suministros industriales con cobertura nacional.</p>
+                    <ul class="service-features">
                         <li>Carga consolidada</li>
                         <li>Carga completa</li>
                         <li>Manejo especializado</li>
                     </ul>
                 </div>
-                <div class="service-card">
+                
+                <div class="service-card animate-on-scroll delay-1">
+                    <div class="service-icon">
+                        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ee2c28" stroke-width="1.5">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                            <polyline points="9 22 9 12 15 12 15 22" />
+                        </svg>
+                    </div>
                     <h3>Logistica Integral</h3>
                     <p>Soluciones personalizadas para la cadena de suministro, desde el origen hasta el destino final.</p>
-                    <ul>
+                    <ul class="service-features">
                         <li>Almacenamiento temporal</li>
                         <li>Distribucion programada</li>
                         <li>Control de inventario</li>
                     </ul>
                 </div>
-                <div class="service-card">
+                
+                <div class="service-card animate-on-scroll delay-2">
+                    <div class="service-icon">
+                        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ee2c28" stroke-width="1.5">
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M12 6v6l4 2" />
+                        </svg>
+                    </div>
                     <h3>Transporte Especializado</h3>
                     <p>Equipos y vehiculos adaptados para cargas que requieren condiciones especiales de manejo.</p>
-                    <ul>
+                    <ul class="service-features">
                         <li>Cargas sobredimensionadas</li>
                         <li>Materiales peligrosos</li>
                         <li>Carga refrigerada</li>
                     </ul>
                 </div>
-                <div class="service-card">
+                
+                <div class="service-card animate-on-scroll delay-3">
+                    <div class="service-icon">
+                        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ee2c28" stroke-width="1.5">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                            <polyline points="22 4 12 14.01 9 11.01" />
+                        </svg>
+                    </div>
                     <h3>Ultima Milla</h3>
                     <p>Servicio de entrega rapida en zonas urbanas y metropolitanas con seguimiento en tiempo real.</p>
-                    <ul>
+                    <ul class="service-features">
                         <li>Entregas programadas</li>
                         <li>Rastreo GPS</li>
                         <li>Confirmacion de entrega</li>
@@ -92,74 +148,154 @@
             </div>
         </section>
 
+        <!-- FLOTA CON ANIMACIONES -->
         <section id="flota" class="fleet">
-            <h2>Nuestra Flota</h2>
+            <div class="section-header">
+                <h2 class="section-title">Nuestra Flota</h2>
+                <p class="section-subtitle">Vehiculos modernos y equipados para cada necesidad</p>
+            </div>
+            
             <div class="fleet-grid">
-                <div class="fleet-item">
+                <div class="fleet-item animate-on-scroll">
+                    <div class="fleet-number">25</div>
                     <h3>Tractocamiones</h3>
-                    <p>15 unidades</p>
-                    <p>Capacidad: 20-30 toneladas</p>
+                    <p>Capacidad: 30-40 toneladas</p>
+                    <div class="fleet-bar"></div>
                 </div>
-                <div class="fleet-item">
+                <div class="fleet-item animate-on-scroll delay-1">
+                    <div class="fleet-number">20</div>
                     <h3>Camiones Sencillos</h3>
-                    <p>15 unidades</p>
                     <p>Capacidad: 10-15 toneladas</p>
+                    <div class="fleet-bar"></div>
                 </div>
-                <div class="fleet-item">
+                <div class="fleet-item animate-on-scroll delay-2">
+                    <div class="fleet-number">15</div>
                     <h3>Vehiculos Utilitarios</h3>
-                    <p>15 unidades</p>
                     <p>Capacidad: 3-5 toneladas</p>
+                    <div class="fleet-bar"></div>
                 </div>
-                <div class="fleet-item">
+                <div class="fleet-item animate-on-scroll delay-3">
+                    <div class="fleet-number">20</div>
                     <h3>Remolques Especializados</h3>
-                    <p>25 unidades</p>
                     <p>Plataforma, caja seca, termo</p>
+                    <div class="fleet-bar"></div>
                 </div>
             </div>
         </section>
 
+        <!-- COBERTURA -->
         <section id="cobertura" class="coverage">
-            <h2>Cobertura Nacional</h2>
+            <div class="section-header">
+                <h2 class="section-title">Cobertura Nacional</h2>
+                <p class="section-subtitle">Llegamos a todo el territorio nacional</p>
+            </div>
+            
             <div class="coverage-content">
-                <div class="coverage-map">
-                    <p>Principales rutas y centros de distribucion:</p>
-                    <ul class="coverage-list">
-                        <li>Zona Norte.</li>
-                        <li>Zona Centro.</li>
-                        <li>Zona Sur.</li>
-                        <li>Zona Occidente.</li>
-                    </ul>
+                <div class="coverage-map animate-on-scroll">
+                    <div class="map-placeholder">
+                        <div class="map-points">
+                            <div class="map-dot" style="top: 20%; left: 30%;"></div>
+                            <div class="map-dot" style="top: 45%; left: 55%;"></div>
+                            <div class="map-dot" style="top: 70%; left: 40%;"></div>
+                            <div class="map-dot" style="top: 30%; left: 70%;"></div>
+                            <div class="map-dot" style="top: 60%; left: 80%;"></div>
+                        </div>
+                    </div>
+                    <p class="map-caption">7 centros estrategicamente ubicados</p>
                 </div>
-                <div class="coverage-features">
-                    <h3>Centros de Operacion</h3>
-                    <p>3 centros estrategicamente ubicados para optimizar tiempos de entrega y reducir costos logisticos.</p>
-                    <h3>Tiempos de Transito</h3>
-                    <p>Entregas en 5-15 horas en principales ciudades y zonas metropolitanas.</p>
+                
+                <div class="coverage-features animate-on-scroll delay-1">
+                    <h3>Principales rutas y centros de distribucion:</h3>
+                    <ul class="coverage-list">
+                        <li><strong>Zona Norte:</strong> Lima - Perú</li>
+                        <li><strong>Zona Centro:</strong> Lima - Perú</li>
+                        <li><strong>Zona Sur:</strong> Lima - Perú</li>
+                        <li><strong>Zona Occidente:</strong> Lima - Perú</li>
+                    </ul>
+                    
+                    <div class="coverage-highlight">
+                        <div class="highlight-item">
+                            <span class="highlight-number">7</span>
+                            <span>Centros de Operacion</span>
+                        </div>
+                        <div class="highlight-item">
+                            <span class="highlight-number">24-72</span>
+                            <span>Horas de Entrega</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
 
+        <!-- CONTACTO -->
         <section id="contacto" class="contact">
-            <h2>Contacto</h2>
+            <div class="section-header">
+                <h2 class="section-title">Contacto</h2>
+                <p class="section-subtitle">Estamos aqui para ayudarle</p>
+            </div>
+            
             <div class="contact-container">
-                <div class="contact-info">
+                <div class="contact-info animate-on-scroll">
                     <h3>Oficina Corporativa</h3>
-                    <p>La Molina o La Indenpencia</p>
-                    <p>Lima Perú</p>
-                    <p>Telefono: +51 900 000 000</p>
-                    <p>Correo: soportesupplytransport@gmail.com</p>
+                    <div class="info-item">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ee2c28">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                            <circle cx="12" cy="10" r="3" />
+                        </svg>
+                        <span>Av- La Indenpencia</span>
+                    </div>
+                    <div class="info-item">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ee2c28">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8 10a16 16 0 0 0 6 6l1.36-1.36a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+                        </svg>
+                        <span>(+51) 9</span>
+                    </div>
+                    <div class="info-item">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ee2c28">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                            <polyline points="22,6 12,13 2,6" />
+                        </svg>
+                        <span>soporte@supplytransport.com</span>
+                    </div>
                     
                     <h3>Atencion a Clientes</h3>
-                    <p>Lunes a Viernes: 8:00 - 19:00 hrs</p>
-                    <p>Sabados: 9:00 - 14:00 hrs</p>
-                    <p>Emergencias 24/7: +51 900 000 000</p>
+                    <div class="info-item">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ee2c28">
+                            <circle cx="12" cy="12" r="10" />
+                            <polyline points="12 6 12 12 16 14" />
+                        </svg>
+                        <span>Lunes a Viernes: 8:00 - 19:00 hrs</span>
+                    </div>
+                    <div class="info-item">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ee2c28">
+                            <circle cx="12" cy="12" r="10" />
+                            <polyline points="12 6 12 12 16 14" />
+                        </svg>
+                        <span>Sabados: 9:00 - 14:00 hrs</span>
+                    </div>
+                    <div class="info-item emergency">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ee2c28">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                        </svg>
+                        <span>Emergencias 24/7: ...</span>
+                    </div>
                 </div>
-                <div class="contact-form">
+                
+                <div class="contact-form animate-on-scroll delay-1">
                     <form id="contactForm">
-                        <input type="text" placeholder="Nombre completo" required>
-                        <input type="email" placeholder="Correo electronico" required>
-                        <input type="tel" placeholder="Telefono">
-                        <textarea placeholder="Mensaje" rows="5" required></textarea>
+                        <div class="form-group">
+                            <input type="text" placeholder="Nombre completo" required>
+                        </div>
+                        <div class="form-group">
+                            <input type="email" placeholder="Correo electronico" required>
+                        </div>
+                        <div class="form-group">
+                            <input type="tel" placeholder="Telefono">
+                        </div>
+                        <div class="form-group">
+                            <textarea placeholder="Mensaje" rows="5" required></textarea>
+                        </div>
                         <button type="submit" class="btn-submit">Enviar Mensaje</button>
                     </form>
                 </div>
@@ -167,13 +303,13 @@
         </section>
     </main>
 
+    <!-- FOOTER -->
     <footer class="footer">
         <div class="footer-content">
             <div class="footer-section">
-                <h4>Supply Transport</h4>
+                <img src="assets/images/Logo.Suplly.Tranport.Sac.jpg" alt="Supply Transport Logo" class="footer-logo">
                 <p>Excelencia en logistica y transporte desde 2016</p>
-                <p>Certificaciones: PRONTO</p>
-                <p>RUC: 20601336660</p>
+                <p class="certifications">Certificaciones: ...</p>
             </div>
             <div class="footer-section">
                 <h4>Enlaces Rapidos</h4>
@@ -185,14 +321,19 @@
                 </ul>
             </div>
             <div class="footer-section">
-                <h4>Redes Sociales</h4>
-                <p>LinkedIn: Supply Transport SAC</p>
-                <p>Instagram: @supplytransport</p>
+                <h4>Siguenos</h4>
+                <div class="social-links">
+                    <a href="#" class="social-link">LinkedIn</a>
+                    <a href="#" class="social-link">Twitter</a>
+                    <a href="#" class="social-link">Facebook</a>
+                </div>
             </div>
         </div>
         <div class="footer-bottom">
             <p>&copy; 2026 Supply Transport. Todos los derechos reservados.</p>
         </div>
     </footer>
+
+    <script src="js/main.js"></script>
 </body>
 </html>
