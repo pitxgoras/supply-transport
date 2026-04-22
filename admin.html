@@ -3,224 +3,262 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Administrativo - Supply Transport</title>
+    <title>Panel Admin - Supply Transport</title>
     <link rel="stylesheet" href="css/admin.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
-    <div class="admin-container">
+    <div class="admin-layout">
         <!-- SIDEBAR -->
-        <aside class="admin-sidebar">
+        <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <h2>Admin Panel</h2>
-                <span class="user-name"></span>
-                <span class="user-role"></span>
+                <img src="assets/images/Logo_STSAC.png" alt="Logo" class="sidebar-logo">
+                <button class="sidebar-close" id="sidebarClose">&times;</button>
             </div>
             
-            <nav class="admin-nav">
-                <ul>
-                    <li><a href="#" class="nav-item active" data-page="empleados">Gestion Empleados</a></li>
-                    <li><a href="#" class="nav-item" data-page="vehiculos">Gestion Flota</a></li>
-                    <li><a href="#" class="nav-item" data-page="clientes">Clientes</a></li>
-                    <li><a href="#" class="nav-item" data-page="reportes">Reportes Generales</a></li>
-                    <li class="admin-only"><a href="#" class="nav-item" data-page="configuracion">Configuracion</a></li>
-                </ul>
+            <div class="user-info">
+                <div class="user-avatar"></div>
+                <div>
+                    <div class="user-name" id="userName"></div>
+                    <div class="user-role" id="userRole"></div>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-link active" data-page="dashboard">Dashboard</a>
+                <a href="#" class="nav-link" data-page="employees">Empleados</a>
+                <a href="#" class="nav-link" data-page="routes">Rutas</a>
+                <a href="#" class="nav-link" data-page="fleet">Flota</a>
+                <a href="#" class="nav-link" data-page="reports">Reportes</a>
+                <a href="#" class="nav-link" data-page="settings">Configuracion</a>
             </nav>
             
-            <button id="logoutBtn" class="btn-logout">Cerrar Sesion</button>
+            <div class="sidebar-footer">
+                <button id="logoutBtn" class="btn-logout">Cerrar Sesion</button>
+            </div>
         </aside>
         
-        <!-- CONTENIDO PRINCIPAL -->
-        <main class="admin-main">
-            <header class="admin-header">
+        <!-- MAIN CONTENT -->
+        <main class="main">
+            <header class="main-header">
+                <button class="menu-toggle" id="menuToggle">☰</button>
                 <h1>Panel Administrativo</h1>
-                <div class="admin-actions">
-                    <button class="btn-primary" onclick="exportData()">Exportar Datos</button>
-                    <button class="btn-secondary" onclick="importData()">Importar Datos</button>
+                <div class="header-right">
+                    <button class="btn-secondary" onclick="exportData()">Exportar</button>
                 </div>
             </header>
             
-            <div id="adminContent" class="admin-content">
-                <!-- GESTION DE EMPLEADOS -->
-                <div id="empleados" class="admin-page active">
-                    <div class="page-header">
-                        <h2>Gestion de Empleados</h2>
-                        <button class="btn-add" onclick="showAddEmployeeModal()">+ Agregar Empleado</button>
+            <div class="content">
+                <!-- DASHBOARD -->
+                <div id="dashboard" class="page active">
+                    <div class="stats-row">
+                        <div class="stat-box">
+                            <span class="stat-label">Empleados</span>
+                            <span class="stat-number" id="totalEmp">40</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Rutas Activas</span>
+                            <span class="stat-number" id="activeRoutes">0</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Entregas Hoy</span>
+                            <span class="stat-number" id="todayDeliveries">0</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Eficiencia</span>
+                            <span class="stat-number" id="efficiency">96%</span>
+                        </div>
                     </div>
                     
-                    <div class="filters">
-                        <input type="text" placeholder="Buscar empleado por nombre, email o ID..." id="searchEmployee">
-                        <select id="filterDepartment">
-                            <option value="">Todos los departamentos</option>
-                            <option value="TI">TI</option>
-                            <option value="Operaciones">Operaciones</option>
-                            <option value="Logistica">Logistica</option>
-                            <option value="Almacen">Almacen</option>
-                            <option value="Comercial">Comercial</option>
-                            <option value="Recursos Humanos">Recursos Humanos</option>
-                            <option value="Finanzas">Finanzas</option>
-                            <option value="Calidad">Calidad</option>
-                            <option value="Mantenimiento">Mantenimiento</option>
-                        </select>
-                        <select id="filterRole">
+                    <div class="row-2col">
+                        <div class="card">
+                            <h3>Rutas en Progreso</h3>
+                            <div id="activeRoutesList"></div>
+                        </div>
+                        <div class="card">
+                            <h3>Operadores en Ruta</h3>
+                            <div id="activeOperators"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- EMPLEADOS -->
+                <div id="employees" class="page">
+                    <div class="page-header">
+                        <h2>Gestion de Empleados</h2>
+                        <button class="btn-primary" onclick="showAddModal()">+ Agregar</button>
+                    </div>
+                    
+                    <div class="filter-bar">
+                        <input type="text" id="searchEmp" placeholder="Buscar..." class="search-input">
+                        <select id="filterRole" class="filter-select">
                             <option value="">Todos los roles</option>
-                            <option value="admin">Administrador</option>
+                            <option value="admin">Admin</option>
                             <option value="manager">Gerente</option>
                             <option value="supervisor">Supervisor</option>
                             <option value="operator">Operador</option>
                         </select>
-                        <select id="filterStatus">
-                            <option value="">Todos los estados</option>
-                            <option value="active">Activo</option>
-                            <option value="inactive">Inactivo</option>
-                        </select>
                     </div>
                     
-                    <div class="table-info">
-                        <span>Mostrando <span id="showingCount">0</span> de <span id="totalCount">0</span> empleados</span>
-                    </div>
-                    
-                    <div class="table-responsive">
-                        <table class="admin-table" id="employeesTable">
+                    <div class="table-container">
+                        <table class="data-table">
                             <thead>
                                 <tr>
                                     <th>ID</th>
                                     <th>Nombre</th>
                                     <th>Email</th>
-                                    <th>Departamento</th>
                                     <th>Rol</th>
                                     <th>Estado</th>
+                                    <th>Ruta</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody id="employeesTableBody">
-                                <!-- Los datos se cargan dinamicamente -->
-                            </tbody>
+                            <tbody id="employeesTable"></tbody>
                         </table>
                     </div>
+                </div>
+                
+                <!-- RUTAS -->
+                <div id="routes" class="page">
+                    <div class="page-header">
+                        <h2>Gestion de Rutas</h2>
+                        <button class="btn-primary" onclick="showRouteModal()">+ Nueva Ruta</button>
+                    </div>
                     
-                    <div class="pagination" id="pagination"></div>
-                </div>
-                
-                <!-- OTRAS PAGINAS -->
-                <div id="vehiculos" class="admin-page">
-                    <div class="page-header">
-                        <h2>Gestion de Flota</h2>
-                        <button class="btn-add">+ Agregar Vehiculo</button>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Origen</th>
+                                    <th>Destino</th>
+                                    <th>Operador</th>
+                                    <th>Estado</th>
+                                    <th>Progreso</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="routesTable"></tbody>
+                        </table>
                     </div>
-                    <p>Gestion de vehiculos en desarrollo...</p>
                 </div>
                 
-                <div id="clientes" class="admin-page">
-                    <div class="page-header">
-                        <h2>Gestion de Clientes</h2>
-                        <button class="btn-add">+ Agregar Cliente</button>
+                <!-- FLOTA -->
+                <div id="fleet" class="page">
+                    <h2>Gestion de Flota</h2>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Unidad</th>
+                                    <th>Tipo</th>
+                                    <th>Operador</th>
+                                    <th>Estado</th>
+                                    <th>Ultima Ubicacion</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fleetTable"></tbody>
+                        </table>
                     </div>
-                    <p>Gestion de clientes en desarrollo...</p>
                 </div>
                 
-                <div id="reportes" class="admin-page">
-                    <h2>Reportes Generales</h2>
-                    <p>Reportes en desarrollo...</p>
+                <!-- REPORTES ADMIN -->
+                <div id="reports" class="page">
+                    <h2>Reportes de Operadores</h2>
+                    <div class="filter-bar">
+                        <select id="adminReportFilter" class="filter-select">
+                            <option value="all">Todos</option>
+                            <option value="pending">Pendientes</option>
+                            <option value="approved">Aprobados</option>
+                            <option value="rejected">Rechazados</option>
+                        </select>
+                    </div>
+                    <div id="adminReportsList"></div>
                 </div>
                 
-                <div id="configuracion" class="admin-page">
-                    <h2>Configuracion del Sistema</h2>
-                    <p>Configuracion en desarrollo...</p>
+                <!-- CONFIGURACION -->
+                <div id="settings" class="page">
+                    <h2>Configuracion</h2>
+                    <div class="settings-card">
+                        <h3>Datos</h3>
+                        <button class="btn-secondary" onclick="exportData()">Exportar Empleados</button>
+                        <button class="btn-secondary" onclick="importData()">Importar Empleados</button>
+                        <button class="btn-secondary" onclick="exportRoutes()">Exportar Rutas</button>
+                        <button class="btn-secondary" onclick="clearAllData()">Limpiar Datos</button>
+                    </div>
                 </div>
             </div>
         </main>
     </div>
-
-    <!-- MODAL AGREGAR/EDITAR EMPLEADO -->
+    
+    <!-- MODAL EMPLEADO -->
     <div id="employeeModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeEmployeeModal()">&times;</span>
-            <h2 id="modalTitle">Agregar Nuevo Empleado</h2>
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+            <h3 id="modalTitle">Agregar Empleado</h3>
             <form id="employeeForm">
-                <input type="hidden" id="employeeId">
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Nombre Completo:</label>
-                        <input type="text" id="empName" required placeholder="Ej: Juan Perez Lopez">
-                    </div>
-                    <div class="form-group">
-                        <label>Email:</label>
-                        <input type="email" id="empEmail" required placeholder="empleado@supplytransport.com">
-                    </div>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Contrasena:</label>
-                        <input type="password" id="empPassword" required placeholder="Minimo 6 caracteres">
-                    </div>
-                    <div class="form-group">
-                        <label>Confirmar Contrasena:</label>
-                        <input type="password" id="empConfirmPassword" required placeholder="Repita la contrasena">
-                    </div>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Departamento:</label>
-                        <select id="empDepartment" required>
-                            <option value="">Seleccione departamento</option>
-                            <option value="TI">TI</option>
-                            <option value="Operaciones">Operaciones</option>
-                            <option value="Logistica">Logistica</option>
-                            <option value="Almacen">Almacen</option>
-                            <option value="Comercial">Comercial</option>
-                            <option value="Recursos Humanos">Recursos Humanos</option>
-                            <option value="Finanzas">Finanzas</option>
-                            <option value="Calidad">Calidad</option>
-                            <option value="Mantenimiento">Mantenimiento</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Rol:</label>
-                        <select id="empRole" required>
-                            <option value="">Seleccione rol</option>
-                            <option value="admin">Administrador</option>
-                            <option value="manager">Gerente</option>
-                            <option value="supervisor">Supervisor</option>
-                            <option value="operator">Operador</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Estado:</label>
-                        <select id="empStatus" required>
-                            <option value="active">Activo</option>
-                            <option value="inactive">Inactivo</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Telefono (opcional):</label>
-                        <input type="tel" id="empPhone" placeholder="(55) 1234-5678">
-                    </div>
-                </div>
-                
-                <div class="modal-buttons">
-                    <button type="submit" class="btn-primary">Guardar Empleado</button>
-                    <button type="button" class="btn-secondary" onclick="closeEmployeeModal()">Cancelar</button>
+                <input type="hidden" id="empId">
+                <input type="text" id="empName" placeholder="Nombre completo" required>
+                <input type="email" id="empEmail" placeholder="Correo" required>
+                <input type="password" id="empPassword" placeholder="Contrasena" required>
+                <select id="empRole" required>
+                    <option value="">Rol</option>
+                    <option value="operator">Operador</option>
+                    <option value="supervisor">Supervisor</option>
+                    <option value="manager">Gerente</option>
+                    <option value="admin">Admin</option>
+                </select>
+                <select id="empStatus">
+                    <option value="active">Activo</option>
+                    <option value="inactive">Inactivo</option>
+                </select>
+                <div class="modal-actions">
+                    <button type="submit" class="btn-primary">Guardar</button>
+                    <button type="button" class="btn-secondary" onclick="closeModal()">Cancelar</button>
                 </div>
             </form>
         </div>
     </div>
-
-    <!-- MODAL CONFIRMAR ELIMINACION -->
-    <div id="deleteModal" class="modal">
-        <div class="modal-content modal-small">
-            <h3>Confirmar Eliminacion</h3>
-            <p>Esta seguro que desea eliminar al empleado <strong id="deleteEmpName"></strong>?</p>
-            <p class="warning">Esta accion no se puede deshacer.</p>
-            <div class="modal-buttons">
-                <button class="btn-danger" onclick="confirmDelete()">Eliminar</button>
-                <button class="btn-secondary" onclick="closeDeleteModal()">Cancelar</button>
-            </div>
+    
+    <!-- MODAL RUTA -->
+    <div id="routeModal" class="modal">
+        <div class="modal-content modal-large">
+            <span class="modal-close" onclick="closeRouteModal()">&times;</span>
+            <h3>Asignar Nueva Ruta</h3>
+            <form id="routeForm">
+                <div class="form-row">
+                    <select id="routeOperator" required>
+                        <option value="">Seleccionar Operador</option>
+                    </select>
+                    <select id="routeVehicle" required>
+                        <option value="">Seleccionar Vehiculo</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <input type="text" id="routeOrigin" placeholder="Ciudad de Origen" required>
+                    <input type="text" id="routeDestination" placeholder="Ciudad de Destino" required>
+                </div>
+                <div class="form-row">
+                    <input type="number" id="routeDistance" placeholder="Distancia (km)" required>
+                    <input type="text" id="routeETA" placeholder="ETA estimado (ej: 14:30)">
+                </div>
+                
+                <h4>Paradas Programadas</h4>
+                <div id="stopsContainer">
+                    <div class="stop-item">
+                        <input type="text" class="stop-address" placeholder="Direccion de parada">
+                        <input type="text" class="stop-client" placeholder="Cliente">
+                        <button type="button" class="btn-remove-stop" onclick="removeStop(this)">X</button>
+                    </div>
+                </div>
+                <button type="button" class="btn-secondary" onclick="addStop()">+ Agregar Parada</button>
+                
+                <div class="modal-actions">
+                    <button type="submit" class="btn-primary">Asignar Ruta</button>
+                    <button type="button" class="btn-secondary" onclick="closeRouteModal()">Cancelar</button>
+                </div>
+            </form>
         </div>
     </div>
 
