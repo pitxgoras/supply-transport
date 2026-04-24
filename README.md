@@ -1,5 +1,15 @@
 # SUPPLY TRANSPORT S.A.C
 
-Version 2.21.15042026
-Requesito Funcionales: Correos Funcionales
-Mejoras continuas: PRONTO
+Version 2.24.12102026
+
+Requesito Funcionales: 
+Correos Funcionales en JSON
+
+Mejoras continuas: 
+- CRUD DE ADMIN
+- CRUD DE OPERATIVO
+- GESTION DE MAPA MULTIPLES EN BASE AL OPERATIVO
+- CONFIRMACION EN CORREO ELECTRONICO
+- MENSAJE AUTONOMATICO
+- NOTIFICACIONES AL SISTEMA
+- Y MUCHO MAS
