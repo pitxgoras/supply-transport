@@ -1,268 +1,403 @@
+<!-- HTML revisado: sin emojis, con estructura responsive y preparado para CSS/JS -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Admin - Supply Transport</title>
+    <title>Admin Panel - Supply Transport</title>
+
+    <!-- Estilos propios -->
     <link rel="stylesheet" href="css/admin.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
+
 <body>
-    <div class="admin-layout">
-        <!-- SIDEBAR -->
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <img src="assets/images/Logo_STSAC.png" alt="Logo" class="sidebar-logo">
-                <button class="sidebar-close" id="sidebarClose">&times;</button>
+    <div class="app-shell">
+
+        <!-- Barra superior -->
+        <header class="topbar">
+            <button class="hamburger" id="menuBtn" type="button" aria-label="Abrir menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+            <div class="topbar-center">
+                <span class="topbar-title">Admin Panel</span>
             </div>
-            
-            <div class="user-info">
-                <div class="user-avatar"></div>
-                <div>
-                    <div class="user-name" id="userName"></div>
-                    <div class="user-role" id="userRole"></div>
-                </div>
+
+            <div class="topbar-right">
+                <span id="syncTime"></span>
+                <button class="icon-btn" type="button" onclick="syncAll()" aria-label="Sincronizar">
+                    Sync
+                </button>
             </div>
-            
-            <nav class="sidebar-nav">
-                <a href="#" class="nav-link active" data-page="dashboard">Dashboard</a>
-                <a href="#" class="nav-link" data-page="employees">Empleados</a>
-                <a href="#" class="nav-link" data-page="routes">Rutas</a>
-                <a href="#" class="nav-link" data-page="fleet">Flota</a>
-                <a href="#" class="nav-link" data-page="reports">Reportes</a>
-                <a href="#" class="nav-link" data-page="settings">Configuracion</a>
-            </nav>
-            
-            <div class="sidebar-footer">
-                <button id="logoutBtn" class="btn-logout">Cerrar Sesion</button>
+        </header>
+
+        <!-- Menu lateral -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-head">
+                <img src="assets/images/Logo.Suplly.Tranport.Sac.jpg" alt="Logo Supply Transport" class="sidebar-logo">
+
+                <button class="sidebar-close" id="sidebarClose" type="button" aria-label="Cerrar menu">
+                    X
+                </button>
             </div>
-        </aside>
-        
-        <!-- MAIN CONTENT -->
-        <main class="main">
-            <header class="main-header">
-                <button class="menu-toggle" id="menuToggle">☰</button>
-                <h1>Panel Administrativo</h1>
-                <div class="header-right">
-                    <button class="btn-secondary" onclick="exportData()">Exportar</button>
-                </div>
-            </header>
-            
-            <div class="content">
-                <!-- DASHBOARD -->
-                <div id="dashboard" class="page active">
-                    <div class="stats-row">
-                        <div class="stat-box">
-                            <span class="stat-label">Empleados</span>
-                            <span class="stat-number" id="totalEmp">40</span>
-                        </div>
-                        <div class="stat-box">
-                            <span class="stat-label">Rutas Activas</span>
-                            <span class="stat-number" id="activeRoutes">0</span>
-                        </div>
-                        <div class="stat-box">
-                            <span class="stat-label">Entregas Hoy</span>
-                            <span class="stat-number" id="todayDeliveries">0</span>
-                        </div>
-                        <div class="stat-box">
-                            <span class="stat-label">Eficiencia</span>
-                            <span class="stat-number" id="efficiency">96%</span>
-                        </div>
-                    </div>
-                    
-                    <div class="row-2col">
-                        <div class="card">
-                            <h3>Rutas en Progreso</h3>
-                            <div id="activeRoutesList"></div>
-                        </div>
-                        <div class="card">
-                            <h3>Operadores en Ruta</h3>
-                            <div id="activeOperators"></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- EMPLEADOS -->
-                <div id="employees" class="page">
-                    <div class="page-header">
-                        <h2>Gestion de Empleados</h2>
-                        <button class="btn-primary" onclick="showAddModal()">+ Agregar</button>
-                    </div>
-                    
-                    <div class="filter-bar">
-                        <input type="text" id="searchEmp" placeholder="Buscar..." class="search-input">
-                        <select id="filterRole" class="filter-select">
-                            <option value="">Todos los roles</option>
-                            <option value="admin">Admin</option>
-                            <option value="manager">Gerente</option>
-                            <option value="supervisor">Supervisor</option>
-                            <option value="operator">Operador</option>
-                        </select>
-                    </div>
-                    
-                    <div class="table-container">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Nombre</th>
-                                    <th>Email</th>
-                                    <th>Rol</th>
-                                    <th>Estado</th>
-                                    <th>Ruta</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="employeesTable"></tbody>
-                        </table>
-                    </div>
-                </div>
-                
-                <!-- RUTAS -->
-                <div id="routes" class="page">
-                    <div class="page-header">
-                        <h2>Gestion de Rutas</h2>
-                        <button class="btn-primary" onclick="showRouteModal()">+ Nueva Ruta</button>
-                    </div>
-                    
-                    <div class="table-container">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Origen</th>
-                                    <th>Destino</th>
-                                    <th>Operador</th>
-                                    <th>Estado</th>
-                                    <th>Progreso</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="routesTable"></tbody>
-                        </table>
-                    </div>
-                </div>
-                
-                <!-- FLOTA -->
-                <div id="fleet" class="page">
-                    <h2>Gestion de Flota</h2>
-                    <div class="table-container">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Unidad</th>
-                                    <th>Tipo</th>
-                                    <th>Operador</th>
-                                    <th>Estado</th>
-                                    <th>Ultima Ubicacion</th>
-                                </tr>
-                            </thead>
-                            <tbody id="fleetTable"></tbody>
-                        </table>
-                    </div>
-                </div>
-                
-                <!-- REPORTES ADMIN -->
-                <div id="reports" class="page">
-                    <h2>Reportes de Operadores</h2>
-                    <div class="filter-bar">
-                        <select id="adminReportFilter" class="filter-select">
-                            <option value="all">Todos</option>
-                            <option value="pending">Pendientes</option>
-                            <option value="approved">Aprobados</option>
-                            <option value="rejected">Rechazados</option>
-                        </select>
-                    </div>
-                    <div id="adminReportsList"></div>
-                </div>
-                
-                <!-- CONFIGURACION -->
-                <div id="settings" class="page">
-                    <h2>Configuracion</h2>
-                    <div class="settings-card">
-                        <h3>Datos</h3>
-                        <button class="btn-secondary" onclick="exportData()">Exportar Empleados</button>
-                        <button class="btn-secondary" onclick="importData()">Importar Empleados</button>
-                        <button class="btn-secondary" onclick="exportRoutes()">Exportar Rutas</button>
-                        <button class="btn-secondary" onclick="clearAllData()">Limpiar Datos</button>
-                    </div>
+
+            <!-- Perfil -->
+            <div class="profile-card">
+                <div class="profile-avatar" id="profileAvatar">A</div>
+
+                <div class="profile-info">
+                    <strong id="profileName"></strong>
+                    <span id="profileRole"></span>
                 </div>
             </div>
+
+            <!-- Navegacion -->
+            <div class="nav-list">
+                <a href="#" class="nav-item active" data-page="dashboard">
+                    <span class="nav-icon">D</span>
+                    <span>Dashboard</span>
+                </a>
+
+                <a href="#" class="nav-item" data-page="employees">
+                    <span class="nav-icon">E</span>
+                    <span>Empleados</span>
+                </a>
+
+                <a href="#" class="nav-item" data-page="routes">
+                    <span class="nav-icon">R</span>
+                    <span>Rutas</span>
+                </a>
+
+                <a href="#" class="nav-item" data-page="fleet">
+                    <span class="nav-icon">F</span>
+                    <span>Flota</span>
+                </a>
+
+                <a href="#" class="nav-item" data-page="reports">
+                    <span class="nav-icon">P</span>
+                    <span>Reportes</span>
+                </a>
+
+                <a href="#" class="nav-item" data-page="settings">
+                    <span class="nav-icon">C</span>
+                    <span>Config</span>
+                </a>
+            </div>
+
+            <button id="logoutBtn" class="btn-logout" type="button">
+                Cerrar sesion
+            </button>
+        </nav>
+
+        <!-- Fondo oscuro para menu movil -->
+        <div class="overlay" id="overlay"></div>
+
+        <!-- Contenido principal -->
+        <main class="main-content">
+
+            <!-- Dashboard -->
+            <section id="dashboard" class="page active">
+                <h2 class="page-title">Panel General</h2>
+
+                <div class="stats-cards">
+                    <div class="stat-card">
+                        <div class="stat-value" id="statEmployees">40</div>
+                        <div class="stat-label">Empleados</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-value" id="statActiveRoutes">0</div>
+                        <div class="stat-label">Rutas Activas</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-value" id="statFleet">128</div>
+                        <div class="stat-label">Vehiculos</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-value" id="statReports">0</div>
+                        <div class="stat-label">Reportes Pend.</div>
+                    </div>
+                </div>
+
+                <div class="grid-2col">
+                    <div class="card">
+                        <h3>Operadores en Ruta</h3>
+                        <div id="activeOperatorsList"></div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Rutas del Dia</h3>
+                        <div id="todayRoutesList"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Mapa General de Rutas</h3>
+
+                    <div class="map-wrapper">
+                        <div id="overviewMap"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Empleados -->
+            <section id="employees" class="page">
+                <div class="section-header">
+                    <h2>Gestion de Empleados</h2>
+
+                    <button class="btn-primary" type="button" onclick="showAddEmployee()">
+                        Agregar
+                    </button>
+                </div>
+
+                <div class="filter-bar">
+                    <input type="text" id="searchEmp" placeholder="Buscar empleado..." class="input-text">
+
+                    <select id="filterRole" class="input-select">
+                        <option value="">Todos los roles</option>
+                        <option value="admin">Admin</option>
+                        <option value="manager">Gerente</option>
+                        <option value="supervisor">Supervisor</option>
+                        <option value="operator">Operador</option>
+                    </select>
+
+                    <select id="filterStatus" class="input-select">
+                        <option value="">Todos</option>
+                        <option value="active">Activos</option>
+                        <option value="inactive">Inactivos</option>
+                    </select>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Email</th>
+                                <th>Rol</th>
+                                <th>Ruta</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="employeesTable"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Rutas -->
+            <section id="routes" class="page">
+                <div class="section-header">
+                    <h2>Gestion de Rutas Terrestres</h2>
+
+                    <button class="btn-primary" type="button" onclick="showRouteModal()">
+                        Nueva Ruta
+                    </button>
+                </div>
+
+                <div class="filter-bar">
+                    <select id="filterRouteStatus" class="input-select">
+                        <option value="">Todos los estados</option>
+                        <option value="pending">Pendientes</option>
+                        <option value="in-progress">En Progreso</option>
+                        <option value="completed">Completadas</option>
+                    </select>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Ruta</th>
+                                <th>Origen - Destino</th>
+                                <th>Operador</th>
+                                <th>Vehiculo</th>
+                                <th>Progreso</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="routesTable"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Flota -->
+            <section id="fleet" class="page">
+                <h2>Gestion de Flota</h2>
+
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Unidad</th>
+                                <th>Tipo</th>
+                                <th>Operador</th>
+                                <th>Estado</th>
+                                <th>Ubicacion</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="fleetTable"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Reportes -->
+            <section id="reports" class="page">
+                <h2>Reportes de Operadores</h2>
+
+                <div class="filter-bar">
+                    <select id="adminReportFilter" class="input-select">
+                        <option value="all">Todos</option>
+                        <option value="pending">Pendientes</option>
+                        <option value="approved">Aprobados</option>
+                        <option value="rejected">Rechazados</option>
+                    </select>
+                </div>
+
+                <div id="adminReportsList"></div>
+            </section>
+
+            <!-- Configuracion -->
+            <section id="settings" class="page">
+                <h2>Configuracion</h2>
+
+                <div class="card">
+                    <h3>Datos</h3>
+
+                    <div class="btn-group">
+                        <button class="btn-secondary" type="button" onclick="exportData()">Exportar Empleados</button>
+                        <button class="btn-secondary" type="button" onclick="importData()">Importar Empleados</button>
+                        <button class="btn-secondary" type="button" onclick="exportRoutes()">Exportar Rutas</button>
+                        <button class="btn-danger" type="button" onclick="clearAllData()">Limpiar Todo</button>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
-    
-    <!-- MODAL EMPLEADO -->
+
+    <!-- Modal empleado -->
     <div id="employeeModal" class="modal">
-        <div class="modal-content">
-            <span class="modal-close" onclick="closeModal()">&times;</span>
-            <h3 id="modalTitle">Agregar Empleado</h3>
-            <form id="employeeForm">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3 id="modalEmpTitle">Agregar Empleado</h3>
+
+                <button class="modal-close" type="button" onclick="closeModal('employeeModal')" aria-label="Cerrar modal">
+                    X
+                </button>
+            </div>
+
+            <form id="formEmployee">
                 <input type="hidden" id="empId">
-                <input type="text" id="empName" placeholder="Nombre completo" required>
-                <input type="email" id="empEmail" placeholder="Correo" required>
-                <input type="password" id="empPassword" placeholder="Contrasena" required>
-                <select id="empRole" required>
-                    <option value="">Rol</option>
+
+                <input type="text" id="empName" placeholder="Nombre completo" class="input-text" required>
+
+                <input type="email" id="empEmail" placeholder="Correo electronico" class="input-text" required>
+
+                <input type="password" id="empPassword" placeholder="Contrasena" class="input-text" required>
+
+                <select id="empRole" class="input-select" required>
+                    <option value="">Seleccionar rol</option>
                     <option value="operator">Operador</option>
                     <option value="supervisor">Supervisor</option>
                     <option value="manager">Gerente</option>
-                    <option value="admin">Admin</option>
+                    <option value="admin">Administrador</option>
                 </select>
-                <select id="empStatus">
+
+                <select id="empStatus" class="input-select">
                     <option value="active">Activo</option>
                     <option value="inactive">Inactivo</option>
                 </select>
+
                 <div class="modal-actions">
                     <button type="submit" class="btn-primary">Guardar</button>
-                    <button type="button" class="btn-secondary" onclick="closeModal()">Cancelar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    
-    <!-- MODAL RUTA -->
-    <div id="routeModal" class="modal">
-        <div class="modal-content modal-large">
-            <span class="modal-close" onclick="closeRouteModal()">&times;</span>
-            <h3>Asignar Nueva Ruta</h3>
-            <form id="routeForm">
-                <div class="form-row">
-                    <select id="routeOperator" required>
-                        <option value="">Seleccionar Operador</option>
-                    </select>
-                    <select id="routeVehicle" required>
-                        <option value="">Seleccionar Vehiculo</option>
-                    </select>
-                </div>
-                <div class="form-row">
-                    <input type="text" id="routeOrigin" placeholder="Ciudad de Origen" required>
-                    <input type="text" id="routeDestination" placeholder="Ciudad de Destino" required>
-                </div>
-                <div class="form-row">
-                    <input type="number" id="routeDistance" placeholder="Distancia (km)" required>
-                    <input type="text" id="routeETA" placeholder="ETA estimado (ej: 14:30)">
-                </div>
-                
-                <h4>Paradas Programadas</h4>
-                <div id="stopsContainer">
-                    <div class="stop-item">
-                        <input type="text" class="stop-address" placeholder="Direccion de parada">
-                        <input type="text" class="stop-client" placeholder="Cliente">
-                        <button type="button" class="btn-remove-stop" onclick="removeStop(this)">X</button>
-                    </div>
-                </div>
-                <button type="button" class="btn-secondary" onclick="addStop()">+ Agregar Parada</button>
-                
-                <div class="modal-actions">
-                    <button type="submit" class="btn-primary">Asignar Ruta</button>
-                    <button type="button" class="btn-secondary" onclick="closeRouteModal()">Cancelar</button>
+
+                    <button type="button" class="btn-secondary" onclick="closeModal('employeeModal')">
+                        Cancelar
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <script src="js/employees.js"></script>
+    <!-- Modal ruta -->
+    <div id="routeModal" class="modal">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-header">
+                <h3>Asignar Nueva Ruta Terrestre</h3>
+
+                <button class="modal-close" type="button" onclick="closeModal('routeModal')" aria-label="Cerrar modal">
+                    X
+                </button>
+            </div>
+
+            <form id="formRoute">
+                <div class="form-row-2">
+                    <select id="routeOperator" class="input-select" required>
+                        <option value="">Seleccionar Operador</option>
+                    </select>
+
+                    <select id="routeVehicle" class="input-select" required>
+                        <option value="">Seleccionar Vehiculo</option>
+                    </select>
+                </div>
+
+                <div class="form-row-2">
+                    <input type="text" id="routeOrigin" placeholder="Ciudad de Origen" class="input-text" required>
+
+                    <input type="text" id="routeDestination" placeholder="Ciudad de Destino" class="input-text" required>
+                </div>
+
+                <div class="form-row-2">
+                    <input type="number" id="routeDistance" placeholder="Distancia km" class="input-text" required min="1">
+
+                    <input type="time" id="routeETA" class="input-text" required>
+                </div>
+
+                <h4 class="form-subtitle">Paradas Programadas</h4>
+
+                <div id="stopsContainer">
+                    <div class="stop-row">
+                        <input type="text" class="stop-address input-text" placeholder="Direccion">
+
+                        <input type="text" class="stop-client input-text" placeholder="Cliente">
+
+                        <button type="button" class="btn-icon btn-remove" onclick="this.closest('.stop-row').remove()">
+                            X
+                        </button>
+                    </div>
+                </div>
+
+                <button type="button" class="btn-secondary btn-add-stop" onclick="addStopRow()">
+                    Agregar Parada
+                </button>
+
+                <div class="modal-actions">
+                    <button type="submit" class="btn-primary">Asignar Ruta</button>
+
+                    <button type="button" class="btn-secondary" onclick="closeModal('routeModal')">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts propios -->
     <script src="js/session.js"></script>
     <script src="js/admin.js"></script>
 </body>

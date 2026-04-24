@@ -1,526 +1,1344 @@
-// ADMIN - ASIGNAR RUTAS
+/* =========================================================
+   ADMIN JS - FUNCIONAL, RESPONSIVE Y CONECTADO AL HTML/CSS
+   Sistema: Supply Transport
+   ========================================================= */
+
+/* =========================
+   VARIABLES GLOBALES
+   ========================= */
 
 let session = null;
 let employees = [];
 let routes = [];
-let vehicles = [];
+let fleet = [];
+let overviewMap = null;
+let overviewLayer = null;
+let pollingInterval = null;
 
-document.addEventListener('DOMContentLoaded', function() {
-    session = checkSession();
-    if (!session) return;
-    if (session.role !== 'admin' && session.role !== 'manager') {
-        window.location.href = 'dashboard.html';
+/* =========================
+   INICIO
+   ========================= */
+
+document.addEventListener('DOMContentLoaded', function () {
+    session = getCurrentSession();
+
+    if (!session || (session.role !== 'admin' && session.role !== 'manager')) {
+        window.location.href = session ? 'dashboard.html' : 'login.html';
         return;
     }
-    
+
+    loadAllData();
     initUI();
-    loadData();
     setupNavigation();
-    setupFilters();
     setupForms();
+    setupFilters();
+    setupModalCloseEvents();
+    renderAll();
+    startPolling();
 });
 
-function initUI() {
-    document.getElementById('userName').textContent = session.name;
-    document.getElementById('userRole').textContent = formatRole(session.role);
-    
-    const toggle = document.getElementById('menuToggle');
-    const sidebar = document.getElementById('sidebar');
-    const close = document.getElementById('sidebarClose');
-    
-    if (toggle) toggle.addEventListener('click', () => sidebar.classList.add('active'));
-    if (close) close.addEventListener('click', () => sidebar.classList.remove('active'));
+/* =========================
+   SESION
+   ========================= */
+
+function getCurrentSession() {
+    if (typeof checkSession === 'function') {
+        return checkSession();
+    }
+
+    const savedSession =
+        localStorage.getItem('supply_session') ||
+        localStorage.getItem('session') ||
+        localStorage.getItem('currentUser');
+
+    if (savedSession) {
+        try {
+            return JSON.parse(savedSession);
+        } catch (error) {
+            return null;
+        }
+    }
+
+    return {
+        id: 'ADMIN001',
+        name: 'Administrador',
+        email: 'admin@supply.com',
+        role: 'admin'
+    };
 }
 
-function formatRole(role) {
-    const r = { admin: 'Admin', manager: 'Gerente', supervisor: 'Supervisor', operator: 'Operador' };
-    return r[role] || role;
+function logoutUser() {
+    if (typeof logout === 'function') {
+        logout();
+        return;
+    }
+
+    localStorage.removeItem('supply_session');
+    localStorage.removeItem('session');
+    localStorage.removeItem('currentUser');
+    window.location.href = 'login.html';
 }
 
-function loadData() {
-    employees = [...employeesDatabase];
-    loadRoutes();
-    loadVehicles();
-    
-    document.getElementById('totalEmp').textContent = employees.length;
-    updateStats();
-    renderEmployees();
-    renderRoutes();
-    renderFleet();
-    renderActiveRoutes();
-    renderAdminReports();
+/* =========================
+   CARGA DE DATOS
+   ========================= */
+
+function loadAllData() {
+    employees = loadEmployees();
+    routes = loadRoutes();
+    fleet = loadFleet();
+    updateFleetStatus();
+}
+
+function loadEmployees() {
+    const savedEmployees = localStorage.getItem('supply_employees');
+
+    if (savedEmployees) {
+        try {
+            return JSON.parse(savedEmployees);
+        } catch (error) {
+            return [];
+        }
+    }
+
+    return [];
 }
 
 function loadRoutes() {
-    const saved = localStorage.getItem('supply_routes');
-    routes = saved ? JSON.parse(saved) : [];
+    const savedRoutes = localStorage.getItem('supply_routes');
+
+    if (!savedRoutes) {
+        return [];
+    }
+
+    try {
+        return JSON.parse(savedRoutes);
+    } catch (error) {
+        return [];
+    }
 }
 
-function loadVehicles() {
-    vehicles = [
-        { id: 'ST-045', type: 'Tractocamion', status: 'available' },
-        { id: 'ST-128', type: 'Camion', status: 'available' },
-        { id: 'ST-089', type: 'Utilitario', status: 'available' },
-        { id: 'ST-067', type: 'Tractocamion', status: 'maintenance' }
+function loadFleet() {
+    const savedFleet = localStorage.getItem('supply_fleet');
+
+    if (savedFleet) {
+        try {
+            return JSON.parse(savedFleet);
+        } catch (error) {
+            return [];
+        }
+    }
+
+    const defaultFleet = [
+        { id: 'ST-001', type: 'Tractocamion', status: 'available', plate: 'ABC-123' },
+        { id: 'ST-002', type: 'Tractocamion', status: 'available', plate: 'ABC-456' },
+        { id: 'ST-003', type: 'Camion Carga', status: 'available', plate: 'DEF-789' },
+        { id: 'ST-004', type: 'Camion Carga', status: 'available', plate: 'DEF-012' },
+        { id: 'ST-005', type: 'Utilitario', status: 'available', plate: 'GHI-345' },
+        { id: 'ST-006', type: 'Tractocamion', status: 'maintenance', plate: 'GHI-678' },
+        { id: 'ST-007', type: 'Camion Frio', status: 'available', plate: 'JKL-901' },
+        { id: 'ST-008', type: 'Camion Frio', status: 'available', plate: 'JKL-234' }
     ];
+
+    saveFleet(defaultFleet);
+    return defaultFleet;
 }
 
-function updateStats() {
-    const activeRoutes = routes.filter(r => r.status === 'in-progress').length;
-    document.getElementById('activeRoutes').textContent = activeRoutes;
+function saveEmployees(data) {
+    localStorage.setItem('supply_employees', JSON.stringify(data));
+
+    if (typeof employeesDatabase !== 'undefined') {
+        employeesDatabase = data;
+    }
 }
+
+function saveRoutes(data) {
+    localStorage.setItem('supply_routes', JSON.stringify(data));
+}
+
+function saveFleet(data) {
+    localStorage.setItem('supply_fleet', JSON.stringify(data));
+}
+
+/* =========================
+   UI GENERAL
+   ========================= */
+
+function initUI() {
+    setText('profileName', session.name || 'Administrador');
+    setText('profileRole', formatRole(session.role || 'admin'));
+    setText('profileAvatar', (session.name || 'A').charAt(0).toUpperCase());
+
+    const menuBtn = document.getElementById('menuBtn');
+    const sidebarClose = document.getElementById('sidebarClose');
+    const overlay = document.getElementById('overlay');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    if (menuBtn) {
+        menuBtn.addEventListener('click', openMenu);
+    }
+
+    if (sidebarClose) {
+        sidebarClose.addEventListener('click', closeMenu);
+    }
+
+    if (overlay) {
+        overlay.addEventListener('click', closeMenu);
+    }
+
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', logoutUser);
+    }
+}
+
+function openMenu() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+
+    if (sidebar) sidebar.classList.add('active');
+    if (overlay) overlay.classList.add('active');
+}
+
+function closeMenu() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+
+    if (sidebar) sidebar.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+}
+
+function setText(id, value) {
+    const element = document.getElementById(id);
+
+    if (element) {
+        element.textContent = value;
+    }
+}
+
+function formatRole(role) {
+    const roles = {
+        admin: 'Admin',
+        manager: 'Gerente',
+        supervisor: 'Supervisor',
+        operator: 'Operador'
+    };
+
+    return roles[role] || role;
+}
+
+function formatStatus(status) {
+    const statuses = {
+        active: 'Activo',
+        inactive: 'Inactivo',
+        available: 'Disponible',
+        'in-use': 'En Uso',
+        maintenance: 'Mantenimiento',
+        pending: 'Pendiente',
+        'in-progress': 'En Progreso',
+        completed: 'Completada',
+        cancelled: 'Cancelada',
+        approved: 'Aprobado',
+        rejected: 'Rechazado'
+    };
+
+    return statuses[status] || status;
+}
+
+function getStatusClass(status) {
+    return status || '';
+}
+
+/* =========================
+   RENDER PRINCIPAL
+   ========================= */
+
+function renderAll() {
+    renderStats();
+    renderEmployees();
+    renderRoutes();
+    renderFleet();
+    renderActiveOperators();
+    renderTodayRoutes();
+    renderAdminReports();
+    renderOverviewMap();
+    updateSyncTime();
+}
+
+function renderStats() {
+    const reports = getReports();
+
+    setText('statEmployees', employees.length);
+    setText('statActiveRoutes', routes.filter(route => route.status === 'in-progress').length);
+    setText('statFleet', fleet.filter(vehicle => vehicle.status === 'available').length + '/' + fleet.length);
+    setText('statReports', reports.filter(report => report.status === 'pending').length);
+}
+
+/* =========================
+   EMPLEADOS
+   ========================= */
 
 function renderEmployees() {
     const tbody = document.getElementById('employeesTable');
+
     if (!tbody) return;
-    
-    const search = document.getElementById('searchEmp')?.value.toLowerCase() || '';
-    const role = document.getElementById('filterRole')?.value || '';
-    
-    let filtered = employees.filter(e => 
-        (e.name.toLowerCase().includes(search) || e.email.toLowerCase().includes(search)) &&
-        (!role || e.role === role)
-    );
-    
-    tbody.innerHTML = filtered.map(e => {
-        const employeeRoute = routes.find(r => r.assignedTo === e.id && r.status !== 'completed');
+
+    const search = getInputValue('searchEmp').toLowerCase();
+    const role = getInputValue('filterRole');
+    const status = getInputValue('filterStatus');
+
+    const filteredEmployees = employees.filter(employee => {
+        const matchesSearch =
+            employee.name.toLowerCase().includes(search) ||
+            employee.email.toLowerCase().includes(search) ||
+            employee.id.toLowerCase().includes(search);
+
+        const matchesRole = !role || employee.role === role;
+        const matchesStatus = !status || employee.status === status;
+
+        return matchesSearch && matchesRole && matchesStatus;
+    });
+
+    if (filteredEmployees.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align:center;padding:22px;">No hay empleados registrados</td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = filteredEmployees.map(employee => {
+        const activeRoute = routes.find(route => {
+            return route.assignedTo === employee.id && route.status === 'in-progress';
+        });
+
         return `
             <tr>
-                <td>${e.id}</td>
-                <td>${e.name}</td>
-                <td>${e.email}</td>
-                <td>${formatRole(e.role)}</td>
-                <td><span class="status ${e.status}">${e.status === 'active' ? 'Activo' : 'Inactivo'}</span></td>
-                <td>${employeeRoute ? `${employeeRoute.origin} → ${employeeRoute.destination}` : 'Sin ruta'}</td>
+                <td>${escapeHTML(employee.id)}</td>
+                <td>${escapeHTML(employee.name)}</td>
+                <td>${escapeHTML(employee.email)}</td>
+                <td>${escapeHTML(formatRole(employee.role))}</td>
+                <td>${activeRoute ? escapeHTML(activeRoute.origin + ' - ' + activeRoute.destination) : '-'}</td>
                 <td>
-                    <button class="btn-icon btn-edit" onclick="editEmployee('${e.id}')">Editar</button>
-                    ${e.role === 'operator' ? `<button class="btn-icon btn-route" onclick="assignRouteTo('${e.id}')">Asignar Ruta</button>` : ''}
-                    ${session.role === 'admin' ? `<button class="btn-icon btn-delete" onclick="deleteEmployee('${e.id}')">Eliminar</button>` : ''}
+                    <span class="status-badge ${getStatusClass(employee.status)}">
+                        ${formatStatus(employee.status)}
+                    </span>
+                </td>
+                <td>
+                    <button class="btn-icon btn-edit" type="button" onclick="editEmployee('${employee.id}')">Editar</button>
+                    ${employee.role === 'operator' ? `<button class="btn-icon btn-route" type="button" onclick="quickAssign('${employee.id}')">Ruta</button>` : ''}
+                    ${session.role === 'admin' ? `<button class="btn-icon btn-delete" type="button" onclick="deleteEmployee('${employee.id}')">Eliminar</button>` : ''}
                 </td>
             </tr>
         `;
     }).join('');
 }
 
+function showAddEmployee() {
+    const form = document.getElementById('formEmployee');
+
+    setText('modalEmpTitle', 'Agregar Empleado');
+
+    if (form) {
+        form.reset();
+    }
+
+    setInputValue('empId', '');
+    openModal('employeeModal');
+}
+
+function editEmployee(id) {
+    const employee = employees.find(item => item.id === id);
+
+    if (!employee) return;
+
+    setText('modalEmpTitle', 'Editar Empleado');
+
+    setInputValue('empId', employee.id);
+    setInputValue('empName', employee.name);
+    setInputValue('empEmail', employee.email);
+    setInputValue('empPassword', employee.password);
+    setInputValue('empRole', employee.role);
+    setInputValue('empStatus', employee.status);
+
+    openModal('employeeModal');
+}
+
+function deleteEmployee(id) {
+    if (session.role !== 'admin') {
+        alert('Solo el administrador puede eliminar empleados.');
+        return;
+    }
+
+    const hasRoutes = routes.some(route => {
+        return route.assignedTo === id && route.status === 'in-progress';
+    });
+
+    if (hasRoutes) {
+        alert('No se puede eliminar un empleado con ruta activa.');
+        return;
+    }
+
+    if (!confirm('Deseas eliminar este empleado?')) {
+        return;
+    }
+
+    employees = employees.filter(employee => employee.id !== id);
+    saveEmployees(employees);
+    renderAll();
+}
+
+/* =========================
+   RUTAS
+   ========================= */
+
 function renderRoutes() {
     const tbody = document.getElementById('routesTable');
-    if (!tbody) return;
-    
-    tbody.innerHTML = routes.map(r => `
-        <tr>
-            <td>${r.id}</td>
-            <td>${r.origin}</td>
-            <td>${r.destination}</td>
-            <td>${r.operatorName || 'No asignado'}</td>
-            <td><span class="status ${r.status}">${getStatusText(r.status)}</span></td>
-            <td>
-                <div class="progress-bar small">
-                    <div class="progress-fill" style="width: ${r.progress || 0}%"></div>
-                </div>
-                ${r.progress || 0}%
-            </td>
-            <td>
-                <button class="btn-icon btn-edit" onclick="viewRoute('${r.id}')">Ver</button>
-                ${r.status !== 'completed' ? `<button class="btn-icon btn-delete" onclick="cancelRoute('${r.id}')">Cancelar</button>` : ''}
-            </td>
-        </tr>
-    `).join('');
-}
 
-function getStatusText(status) {
-    const s = { pending: 'Pendiente', 'in-progress': 'En Progreso', completed: 'Completado' };
-    return s[status] || status;
-}
-
-function renderFleet() {
-    const tbody = document.getElementById('fleetTable');
     if (!tbody) return;
-    
-    tbody.innerHTML = vehicles.map(v => {
-        const assignedRoute = routes.find(r => r.vehicleId === v.id && r.status === 'in-progress');
+
+    const filter = getInputValue('filterRouteStatus');
+
+    const filteredRoutes = filter
+        ? routes.filter(route => route.status === filter)
+        : routes;
+
+    if (filteredRoutes.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align:center;padding:22px;">No hay rutas registradas</td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = filteredRoutes.map(route => {
         return `
             <tr>
-                <td>${v.id}</td>
-                <td>${v.type}</td>
-                <td>${assignedRoute?.operatorName || 'Disponible'}</td>
-                <td><span class="status ${v.status}">${v.status === 'available' ? 'Disponible' : v.status === 'in-use' ? 'En uso' : 'Mantenimiento'}</span></td>
-                <td>${assignedRoute?.currentLocation ? 'En ruta' : 'Base'}</td>
+                <td>${escapeHTML(route.id)}</td>
+                <td>
+                    <strong>${escapeHTML(route.origin)}</strong> - ${escapeHTML(route.destination)}
+                </td>
+                <td>${escapeHTML(route.operatorName || '-')}</td>
+                <td>${escapeHTML(route.vehicleId || '-')}</td>
+                <td>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width:${Number(route.progress || 0)}%"></div>
+                    </div>
+                    ${Number(route.progress || 0)}%
+                </td>
+                <td>
+                    <span class="route-badge ${getStatusClass(route.status)}">
+                        ${formatStatus(route.status)}
+                    </span>
+                </td>
+                <td>
+                    <button class="btn-icon btn-edit" type="button" onclick="viewRouteDetail('${route.id}')">Ver</button>
+                    ${route.status === 'pending' ? `<button class="btn-icon btn-route" type="button" onclick="startRoute('${route.id}')">Iniciar</button>` : ''}
+                    ${route.status === 'in-progress' ? `<button class="btn-icon btn-route" type="button" onclick="advanceRoute('${route.id}')">Avanzar</button>` : ''}
+                    ${route.status !== 'completed' && route.status !== 'cancelled' ? `<button class="btn-icon btn-delete" type="button" onclick="cancelRoute('${route.id}')">Cancelar</button>` : ''}
+                </td>
             </tr>
         `;
     }).join('');
 }
 
-function renderActiveRoutes() {
-    const container = document.getElementById('activeRoutesList');
-    const operatorsContainer = document.getElementById('activeOperators');
-    
-    const active = routes.filter(r => r.status === 'in-progress');
-    
-    if (container) {
-        container.innerHTML = active.length === 0 ? '<p>No hay rutas activas</p>' : active.map(r => `
-            <div class="active-route-item">
-                <strong>${r.id}</strong>
-                <span>${r.operatorName}</span>
-                <span>${r.origin} → ${r.destination}</span>
-                <div class="progress-bar small">
-                    <div class="progress-fill" style="width: ${r.progress || 0}%"></div>
+function showRouteModal() {
+    const operatorSelect = document.getElementById('routeOperator');
+    const vehicleSelect = document.getElementById('routeVehicle');
+    const stopsContainer = document.getElementById('stopsContainer');
+    const form = document.getElementById('formRoute');
+
+    if (form) {
+        form.reset();
+    }
+
+    const operators = employees.filter(employee => {
+        const hasActiveRoute = routes.some(route => {
+            return route.assignedTo === employee.id &&
+                (route.status === 'pending' || route.status === 'in-progress');
+        });
+
+        return employee.role === 'operator' &&
+            employee.status === 'active' &&
+            !hasActiveRoute;
+    });
+
+    const availableVehicles = fleet.filter(vehicle => vehicle.status === 'available');
+
+    if (operatorSelect) {
+        operatorSelect.innerHTML = `
+            <option value="">Seleccionar Operador</option>
+            ${operators.map(operator => `<option value="${operator.id}">${escapeHTML(operator.name)}</option>`).join('')}
+        `;
+    }
+
+    if (vehicleSelect) {
+        vehicleSelect.innerHTML = `
+            <option value="">Seleccionar Vehiculo</option>
+            ${availableVehicles.map(vehicle => `<option value="${vehicle.id}">${escapeHTML(vehicle.id + ' - ' + vehicle.type + ' - ' + vehicle.plate)}</option>`).join('')}
+        `;
+    }
+
+    if (stopsContainer) {
+        stopsContainer.innerHTML = '';
+        addStopRow();
+    }
+
+    openModal('routeModal');
+}
+
+function quickAssign(employeeId) {
+    showRouteModal();
+
+    setTimeout(function () {
+        setInputValue('routeOperator', employeeId);
+    }, 50);
+}
+
+function startRoute(id) {
+    const route = routes.find(item => item.id === id);
+
+    if (!route) return;
+
+    route.status = 'in-progress';
+    route.startedAt = new Date().toISOString();
+
+    saveRoutes(routes);
+    updateFleetStatus();
+    renderAll();
+}
+
+function advanceRoute(id) {
+    const route = routes.find(item => item.id === id);
+
+    if (!route) return;
+
+    const currentProgress = Number(route.progress || 0);
+    const nextProgress = Math.min(currentProgress + 25, 100);
+
+    route.progress = nextProgress;
+    route.updatedAt = new Date().toISOString();
+
+    if (nextProgress >= 100) {
+        route.status = 'completed';
+        route.completedAt = new Date().toISOString();
+    }
+
+    saveRoutes(routes);
+    updateFleetStatus();
+    renderAll();
+}
+
+function cancelRoute(id) {
+    if (!confirm('Deseas cancelar esta ruta?')) {
+        return;
+    }
+
+    const route = routes.find(item => item.id === id);
+
+    if (!route) return;
+
+    route.status = 'cancelled';
+    route.cancelledAt = new Date().toISOString();
+
+    saveRoutes(routes);
+    updateFleetStatus();
+    renderAll();
+}
+
+function viewRouteDetail(id) {
+    const route = routes.find(item => item.id === id);
+
+    if (!route) return;
+
+    const stops = Array.isArray(route.stops) && route.stops.length > 0
+        ? route.stops.map((stop, index) => {
+            return `${index + 1}. ${stop.address} - ${stop.client}`;
+        }).join('\n')
+        : 'Sin paradas registradas';
+
+    alert(
+        'Ruta: ' + route.id + '\n' +
+        'Origen: ' + route.origin + '\n' +
+        'Destino: ' + route.destination + '\n' +
+        'Operador: ' + route.operatorName + '\n' +
+        'Vehiculo: ' + route.vehicleId + '\n' +
+        'Distancia: ' + route.distance + ' km\n' +
+        'ETA: ' + route.eta + '\n' +
+        'Progreso: ' + route.progress + '%\n' +
+        'Estado: ' + formatStatus(route.status) + '\n\n' +
+        'Paradas:\n' + stops
+    );
+}
+
+function addStopRow() {
+    const container = document.getElementById('stopsContainer');
+
+    if (!container) return;
+
+    const row = document.createElement('div');
+    row.className = 'stop-row';
+
+    row.innerHTML = `
+        <input type="text" class="stop-address input-text" placeholder="Direccion de parada">
+        <input type="text" class="stop-client input-text" placeholder="Nombre del cliente">
+        <button type="button" class="btn-icon btn-remove" onclick="this.closest('.stop-row').remove()">X</button>
+    `;
+
+    container.appendChild(row);
+}
+
+/* =========================
+   FLOTA
+   ========================= */
+
+function updateFleetStatus() {
+    fleet = fleet.map(vehicle => {
+        if (vehicle.status === 'maintenance') {
+            return vehicle;
+        }
+
+        const assignedRoute = routes.find(route => {
+            return route.vehicleId === vehicle.id &&
+                (route.status === 'pending' || route.status === 'in-progress');
+        });
+
+        return {
+            ...vehicle,
+            status: assignedRoute ? 'in-use' : 'available'
+        };
+    });
+
+    saveFleet(fleet);
+}
+
+function renderFleet() {
+    const tbody = document.getElementById('fleetTable');
+
+    if (!tbody) return;
+
+    if (fleet.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" style="text-align:center;padding:22px;">No hay vehiculos registrados</td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = fleet.map(vehicle => {
+        const route = routes.find(item => {
+            return item.vehicleId === vehicle.id &&
+                (item.status === 'pending' || item.status === 'in-progress');
+        });
+
+        return `
+            <tr>
+                <td>${escapeHTML(vehicle.id)}</td>
+                <td>${escapeHTML(vehicle.type)}<br><small>${escapeHTML(vehicle.plate || '')}</small></td>
+                <td>${route ? escapeHTML(route.operatorName) : 'Disponible'}</td>
+                <td>
+                    <span class="status-badge ${getStatusClass(vehicle.status)}">
+                        ${formatStatus(vehicle.status)}
+                    </span>
+                </td>
+                <td>${route ? escapeHTML(route.origin + ' - ' + route.destination) : 'Base'}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+/* =========================
+   DASHBOARD
+   ========================= */
+
+function renderActiveOperators() {
+    const container = document.getElementById('activeOperatorsList');
+
+    if (!container) return;
+
+    const activeRoutes = routes.filter(route => route.status === 'in-progress');
+
+    if (activeRoutes.length === 0) {
+        container.innerHTML = `
+            <p style="color:#999;text-align:center;padding:20px;">Sin operadores en ruta</p>
+        `;
+        return;
+    }
+
+    container.innerHTML = activeRoutes.map(route => {
+        return `
+            <div class="active-operator">
+                <div>
+                    <strong>${escapeHTML(route.operatorName)}</strong><br>
+                    <small>${escapeHTML(route.origin)} - ${escapeHTML(route.destination)}</small>
                 </div>
+                <span class="route-badge in-progress">${Number(route.progress || 0)}%</span>
             </div>
-        `).join('');
+        `;
+    }).join('');
+}
+
+function renderTodayRoutes() {
+    const container = document.getElementById('todayRoutesList');
+
+    if (!container) return;
+
+    const today = new Date().toDateString();
+
+    const todayRoutes = routes.filter(route => {
+        const dateValue = route.createdAt || route.assignedAt || route.startedAt;
+        if (!dateValue) return false;
+
+        return new Date(dateValue).toDateString() === today;
+    });
+
+    if (todayRoutes.length === 0) {
+        container.innerHTML = `
+            <p style="color:#999;text-align:center;padding:20px;">Sin rutas hoy</p>
+        `;
+        return;
     }
-    
-    if (operatorsContainer) {
-        const operators = [...new Set(active.map(r => r.operatorName))];
-        operatorsContainer.innerHTML = operators.length === 0 ? '<p>No hay operadores en ruta</p>' : operators.map(op => `
-            <div class="operator-item">
-                <span>🚛 ${op}</span>
-                <span class="status in-progress">En ruta</span>
+
+    container.innerHTML = todayRoutes.map(route => {
+        return `
+            <div class="today-route">
+                <div>
+                    <strong>${escapeHTML(route.id)}</strong><br>
+                    <small>${escapeHTML(route.operatorName || '-')}</small>
+                </div>
+                <span class="route-badge ${getStatusClass(route.status)}">${formatStatus(route.status)}</span>
             </div>
-        `).join('');
+        `;
+    }).join('');
+}
+
+/* =========================
+   MAPA
+   ========================= */
+
+function renderOverviewMap() {
+    const mapElement = document.getElementById('overviewMap');
+
+    if (!mapElement || typeof L === 'undefined') {
+        return;
     }
+
+    const cityCoords = {
+        Lima: [-12.0464, -77.0428],
+        Arequipa: [-16.4090, -71.5375],
+        Trujillo: [-8.1150, -79.0300],
+        Chiclayo: [-6.7714, -79.8409],
+        Piura: [-5.1945, -80.6328],
+        Cusco: [-13.5320, -71.9675],
+        Huancayo: [-12.0651, -75.2049],
+        Ica: [-14.0678, -75.7286],
+        Tacna: [-18.0146, -70.2536],
+        Huacho: [-11.1085, -77.6103],
+        Chimbote: [-9.0745, -78.5936],
+        Cajamarca: [-7.1638, -78.5003],
+        Huaraz: [-9.5333, -77.5333],
+        Ayacucho: [-13.1588, -74.2238]
+    };
+
+    if (!overviewMap) {
+        overviewMap = L.map('overviewMap').setView([-9.19, -75.0152], 6);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: 'OpenStreetMap'
+        }).addTo(overviewMap);
+    }
+
+    if (overviewLayer) {
+        overviewLayer.clearLayers();
+    } else {
+        overviewLayer = L.layerGroup().addTo(overviewMap);
+    }
+
+    const activeRoutes = routes.filter(route => {
+        return route.status === 'pending' || route.status === 'in-progress';
+    });
+
+    activeRoutes.forEach(route => {
+        const originCoords = cityCoords[route.origin] || cityCoords.Lima;
+        const destinationCoords = cityCoords[route.destination] || cityCoords.Lima;
+
+        L.marker(originCoords)
+            .bindPopup('Origen: ' + route.origin + '<br>Operador: ' + route.operatorName)
+            .addTo(overviewLayer);
+
+        L.marker(destinationCoords)
+            .bindPopup('Destino: ' + route.destination + '<br>Operador: ' + route.operatorName)
+            .addTo(overviewLayer);
+
+        L.polyline([originCoords, destinationCoords], {
+            color: '#e74c3c',
+            weight: 4,
+            opacity: 0.8
+        }).addTo(overviewLayer);
+    });
+
+    setTimeout(function () {
+        overviewMap.invalidateSize();
+    }, 200);
+}
+
+/* =========================
+   REPORTES
+   ========================= */
+
+function getReports() {
+    const savedReports = localStorage.getItem('supply_reports');
+
+    if (!savedReports) {
+        return [];
+    }
+
+    try {
+        return JSON.parse(savedReports);
+    } catch (error) {
+        return [];
+    }
+}
+
+function saveReports(reports) {
+    localStorage.setItem('supply_reports', JSON.stringify(reports));
 }
 
 function renderAdminReports() {
     const container = document.getElementById('adminReportsList');
+
     if (!container) return;
-    
-    const saved = localStorage.getItem('supply_reports');
-    const reports = saved ? JSON.parse(saved) : [];
-    const filter = document.getElementById('adminReportFilter')?.value || 'all';
-    
-    let filtered = filter === 'all' ? reports : reports.filter(r => r.status === filter);
-    
-    container.innerHTML = filtered.map(r => `
-        <div class="admin-report-card ${r.status}">
-            <div class="report-header">
-                <span><strong>${r.id}</strong> - ${r.createdByName}</span>
-                <span class="status ${r.status}">${r.status}</span>
-            </div>
-            <p><strong>Tipo:</strong> ${r.type}</p>
-            <p>${r.description}</p>
-            <small>${r.date}</small>
-            ${r.status === 'pending' ? `
-                <div class="report-actions">
-                    <button class="btn-small btn-approve" onclick="approveReport('${r.id}')">Aprobar</button>
-                    <button class="btn-small btn-reject" onclick="rejectReport('${r.id}')">Rechazar</button>
+
+    const filter = getInputValue('adminReportFilter') || 'all';
+    const reports = getReports();
+
+    const filteredReports = filter === 'all'
+        ? reports
+        : reports.filter(report => report.status === filter);
+
+    if (filteredReports.length === 0) {
+        container.innerHTML = `
+            <p style="color:#999;text-align:center;padding:30px;">No hay reportes</p>
+        `;
+        return;
+    }
+
+    container.innerHTML = filteredReports.map(report => {
+        return `
+            <div class="admin-report-card ${getStatusClass(report.status)}">
+                <div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap;">
+                    <strong>${escapeHTML(report.id || 'Reporte')} - ${escapeHTML(report.createdByName || 'Operador')}</strong>
+                    <span class="route-badge ${getStatusClass(report.status)}">${formatStatus(report.status)}</span>
                 </div>
-            ` : ''}
-        </div>
-    `).join('');
+
+                <p><strong>Tipo:</strong> ${escapeHTML(report.type || '-')}</p>
+                <p>${escapeHTML(report.description || '-')}</p>
+                <small>${escapeHTML(report.date || report.createdAt || '')}</small>
+
+                ${report.status === 'pending' ? `
+                    <div class="report-actions-row">
+                        <button class="btn-stop" type="button" onclick="approveReport('${report.id}')">Aprobar</button>
+                        <button class="btn-stop" type="button" style="background:#e74c3c;" onclick="rejectReport('${report.id}')">Rechazar</button>
+                    </div>
+                ` : ''}
+
+                ${report.response ? `
+                    <p style="margin-top:10px;padding:10px;background:#f8f9fa;border-radius:8px;">
+                        <strong>Respuesta:</strong> ${escapeHTML(report.response)}
+                    </p>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
 }
 
 function approveReport(id) {
-    updateReportStatus(id, 'approved', 'Reporte aprobado');
+    updateReport(id, 'approved', 'Aprobado por ' + session.name);
 }
 
 function rejectReport(id) {
     const reason = prompt('Motivo del rechazo:');
-    if (reason) {
-        updateReportStatus(id, 'rejected', reason);
+
+    if (!reason) {
+        return;
     }
+
+    updateReport(id, 'rejected', reason);
 }
 
-function updateReportStatus(id, status, response) {
-    const saved = localStorage.getItem('supply_reports');
-    let reports = saved ? JSON.parse(saved) : [];
-    
-    const index = reports.findIndex(r => r.id === id);
-    if (index !== -1) {
-        reports[index].status = status;
-        reports[index].response = response;
-        reports[index].respondedBy = session.name;
-        reports[index].respondedAt = new Date().toISOString();
-    }
-    
-    localStorage.setItem('supply_reports', JSON.stringify(reports));
-    renderAdminReports();
+function updateReport(id, status, response) {
+    const reports = getReports();
+    const index = reports.findIndex(report => report.id === id);
+
+    if (index === -1) return;
+
+    reports[index].status = status;
+    reports[index].response = response;
+    reports[index].respondedAt = new Date().toISOString();
+
+    saveReports(reports);
+    renderAll();
 }
 
-function assignRouteTo(employeeId) {
-    const employee = employees.find(e => e.id === employeeId);
-    if (!employee) return;
-    
-    // Pre-seleccionar operador
-    showRouteModal();
-    
-    setTimeout(() => {
-        const select = document.getElementById('routeOperator');
-        if (select) {
-            select.value = employeeId;
-        }
-    }, 100);
-}
-
-function showRouteModal() {
-    const modal = document.getElementById('routeModal');
-    const operatorSelect = document.getElementById('routeOperator');
-    const vehicleSelect = document.getElementById('routeVehicle');
-    
-    // Llenar operadores
-    const operators = employees.filter(e => e.role === 'operator' && e.status === 'active');
-    operatorSelect.innerHTML = '<option value="">Seleccionar Operador</option>' + 
-        operators.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
-    
-    // Llenar vehiculos disponibles
-    const availableVehicles = vehicles.filter(v => v.status === 'available');
-    vehicleSelect.innerHTML = '<option value="">Seleccionar Vehiculo</option>' + 
-        availableVehicles.map(v => `<option value="${v.id}">${v.id} - ${v.type}</option>`).join('');
-    
-    modal.classList.add('active');
-}
-
-function closeRouteModal() {
-    document.getElementById('routeModal').classList.remove('active');
-    document.getElementById('routeForm').reset();
-}
-
-function addStop() {
-    const container = document.getElementById('stopsContainer');
-    const div = document.createElement('div');
-    div.className = 'stop-item';
-    div.innerHTML = `
-        <input type="text" class="stop-address" placeholder="Direccion de parada">
-        <input type="text" class="stop-client" placeholder="Cliente">
-        <button type="button" class="btn-remove-stop" onclick="removeStop(this)">X</button>
-    `;
-    container.appendChild(div);
-}
-
-function removeStop(btn) {
-    btn.closest('.stop-item').remove();
-}
-
-function setupFilters() {
-    document.getElementById('searchEmp')?.addEventListener('input', renderEmployees);
-    document.getElementById('filterRole')?.addEventListener('change', renderEmployees);
-    document.getElementById('adminReportFilter')?.addEventListener('change', renderAdminReports);
-}
-
-function setupForms() {
-    document.getElementById('employeeForm')?.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const id = document.getElementById('empId').value;
-        const data = {
-            id: id || 'EMP' + String(employees.length + 1).padStart(3, '0'),
-            name: document.getElementById('empName').value,
-            email: document.getElementById('empEmail').value,
-            password: document.getElementById('empPassword').value,
-            role: document.getElementById('empRole').value,
-            status: document.getElementById('empStatus').value
-        };
-        
-        if (id) {
-            const index = employees.findIndex(e => e.id === id);
-            if (index !== -1) employees[index] = data;
-        } else {
-            employees.push(data);
-        }
-        
-        employeesDatabase = employees;
-        renderEmployees();
-        closeModal();
-    });
-    
-    document.getElementById('routeForm')?.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const operatorId = document.getElementById('routeOperator').value;
-        const vehicleId = document.getElementById('routeVehicle').value;
-        const operator = employees.find(e => e.id === operatorId);
-        
-        // Recopilar paradas
-        const stops = [];
-        document.querySelectorAll('.stop-item').forEach(item => {
-            const address = item.querySelector('.stop-address').value;
-            const client = item.querySelector('.stop-client').value;
-            if (address && client) {
-                stops.push({ address, client, completed: false });
-            }
-        });
-        
-        const newRoute = {
-            id: 'R' + Date.now(),
-            origin: document.getElementById('routeOrigin').value,
-            destination: document.getElementById('routeDestination').value,
-            distance: parseInt(document.getElementById('routeDistance').value),
-            eta: document.getElementById('routeETA').value,
-            status: 'pending',
-            progress: 0,
-            assignedTo: operatorId,
-            operatorName: operator.name,
-            vehicleId: vehicleId,
-            stops: stops,
-            currentLocation: { lat: -12.0464, lng: -77.0428 }, // Lima por defecto
-            assignedBy: session.name,
-            assignedAt: new Date().toISOString()
-        };
-        
-        routes.push(newRoute);
-        localStorage.setItem('supply_routes', JSON.stringify(routes));
-        
-        // Marcar vehiculo como en uso
-        const vehicle = vehicles.find(v => v.id === vehicleId);
-        if (vehicle) vehicle.status = 'in-use';
-        
-        renderRoutes();
-        renderFleet();
-        renderEmployees();
-        updateStats();
-        closeRouteModal();
-        
-        alert('Ruta asignada correctamente a ' + operator.name);
-    });
-}
+/* =========================
+   NAVEGACION
+   ========================= */
 
 function setupNavigation() {
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    const navItems = document.querySelectorAll('.nav-item');
+
+    navItems.forEach(item => {
+        item.addEventListener('click', function (event) {
+            event.preventDefault();
+
+            const pageId = this.dataset.page;
+
+            if (!pageId) return;
+
+            document.querySelectorAll('.nav-item').forEach(nav => {
+                nav.classList.remove('active');
+            });
+
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+
             this.classList.add('active');
-            
-            const page = this.dataset.page;
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.getElementById(page).classList.add('active');
-            
-            document.getElementById('sidebar').classList.remove('active');
-            
-            if (page === 'reports') renderAdminReports();
+
+            const page = document.getElementById(pageId);
+
+            if (page) {
+                page.classList.add('active');
+            }
+
+            closeMenu();
+
+            if (pageId === 'dashboard') {
+                renderOverviewMap();
+            }
         });
     });
 }
 
-function editEmployee(id) {
-    const emp = employees.find(e => e.id === id);
-    if (!emp) return;
-    
-    document.getElementById('modalTitle').textContent = 'Editar Empleado';
-    document.getElementById('empId').value = emp.id;
-    document.getElementById('empName').value = emp.name;
-    document.getElementById('empEmail').value = emp.email;
-    document.getElementById('empPassword').value = emp.password;
-    document.getElementById('empRole').value = emp.role;
-    document.getElementById('empStatus').value = emp.status;
-    
-    document.getElementById('employeeModal').classList.add('active');
-}
+/* =========================
+   FORMULARIOS
+   ========================= */
 
-function deleteEmployee(id) {
-    if (session.role !== 'admin') return;
-    if (confirm('Eliminar empleado?')) {
-        employees = employees.filter(e => e.id !== id);
-        employeesDatabase = employees;
-        renderEmployees();
+function setupForms() {
+    const employeeForm = document.getElementById('formEmployee');
+    const routeForm = document.getElementById('formRoute');
+
+    if (employeeForm) {
+        employeeForm.addEventListener('submit', saveEmployeeFromForm);
+    }
+
+    if (routeForm) {
+        routeForm.addEventListener('submit', saveRouteFromForm);
     }
 }
 
-function cancelRoute(id) {
-    if (confirm('Cancelar esta ruta?')) {
-        const index = routes.findIndex(r => r.id === id);
+function saveEmployeeFromForm(event) {
+    event.preventDefault();
+
+    const id = getInputValue('empId');
+    const name = getInputValue('empName');
+    const email = getInputValue('empEmail');
+    const password = getInputValue('empPassword');
+    const role = getInputValue('empRole');
+    const status = getInputValue('empStatus');
+
+    if (!name || !email || !password || !role) {
+        alert('Completa todos los campos obligatorios.');
+        return;
+    }
+
+    const emailExists = employees.some(employee => {
+        return employee.email === email && employee.id !== id;
+    });
+
+    if (emailExists) {
+        alert('Ya existe un empleado con este correo.');
+        return;
+    }
+
+    if (id) {
+        const index = employees.findIndex(employee => employee.id === id);
+
         if (index !== -1) {
-            const route = routes[index];
-            route.status = 'cancelled';
-            
-            // Liberar vehiculo
-            const vehicle = vehicles.find(v => v.id === route.vehicleId);
-            if (vehicle) vehicle.status = 'available';
-            
-            localStorage.setItem('supply_routes', JSON.stringify(routes));
-            renderRoutes();
-            renderFleet();
-            renderEmployees();
-            updateStats();
+            employees[index] = {
+                ...employees[index],
+                name,
+                email,
+                password,
+                role,
+                status
+            };
         }
+    } else {
+        employees.push({
+            id: generateEmployeeId(),
+            name,
+            email,
+            password,
+            role,
+            status
+        });
+    }
+
+    saveEmployees(employees);
+    closeModal('employeeModal');
+    renderAll();
+}
+
+function saveRouteFromForm(event) {
+    event.preventDefault();
+
+    const operatorId = getInputValue('routeOperator');
+    const vehicleId = getInputValue('routeVehicle');
+    const origin = getInputValue('routeOrigin');
+    const destination = getInputValue('routeDestination');
+    const distance = Number(getInputValue('routeDistance'));
+    const eta = getInputValue('routeETA');
+
+    if (!operatorId || !vehicleId || !origin || !destination || !distance || !eta) {
+        alert('Completa todos los campos de la ruta.');
+        return;
+    }
+
+    const operator = employees.find(employee => employee.id === operatorId);
+
+    if (!operator) {
+        alert('Operador no encontrado.');
+        return;
+    }
+
+    const operatorBusy = routes.some(route => {
+        return route.assignedTo === operatorId &&
+            (route.status === 'pending' || route.status === 'in-progress');
+    });
+
+    if (operatorBusy) {
+        alert('Este operador ya tiene una ruta pendiente o activa.');
+        return;
+    }
+
+    const vehicleBusy = routes.some(route => {
+        return route.vehicleId === vehicleId &&
+            (route.status === 'pending' || route.status === 'in-progress');
+    });
+
+    if (vehicleBusy) {
+        alert('Este vehiculo ya tiene una ruta pendiente o activa.');
+        return;
+    }
+
+    const stops = [];
+
+    document.querySelectorAll('.stop-row').forEach(row => {
+        const addressInput = row.querySelector('.stop-address');
+        const clientInput = row.querySelector('.stop-client');
+
+        const address = addressInput ? addressInput.value.trim() : '';
+        const client = clientInput ? clientInput.value.trim() : '';
+
+        if (address || client) {
+            stops.push({
+                address,
+                client,
+                completed: false
+            });
+        }
+    });
+
+    const newRoute = {
+        id: generateRouteId(),
+        origin,
+        destination,
+        distance,
+        eta,
+        status: 'pending',
+        progress: 0,
+        assignedTo: operatorId,
+        operatorName: operator.name,
+        vehicleId,
+        stops,
+        createdAt: new Date().toISOString(),
+        assignedAt: new Date().toISOString(),
+        assignedBy: session.name
+    };
+
+    routes.push(newRoute);
+
+    saveRoutes(routes);
+    updateFleetStatus();
+    closeModal('routeModal');
+    renderAll();
+
+    alert('Ruta asignada correctamente a ' + operator.name + '.');
+}
+
+/* =========================
+   FILTROS
+   ========================= */
+
+function setupFilters() {
+    bindInput('searchEmp', renderEmployees);
+    bindInput('filterRole', renderEmployees);
+    bindInput('filterStatus', renderEmployees);
+    bindInput('filterRouteStatus', renderRoutes);
+    bindInput('adminReportFilter', renderAdminReports);
+}
+
+function bindInput(id, callback) {
+    const element = document.getElementById(id);
+
+    if (!element) return;
+
+    element.addEventListener('input', callback);
+    element.addEventListener('change', callback);
+}
+
+/* =========================
+   MODALES
+   ========================= */
+
+function openModal(id) {
+    const modal = document.getElementById(id);
+
+    if (modal) {
+        modal.classList.add('active');
     }
 }
 
-function viewRoute(id) {
-    const route = routes.find(r => r.id === id);
-    if (route) {
-        alert(`Ruta ${route.id}\nOrigen: ${route.origin}\nDestino: ${route.destination}\nOperador: ${route.operatorName}\nProgreso: ${route.progress}%\nEstado: ${route.status}`);
+function closeModal(id) {
+    const modal = document.getElementById(id);
+
+    if (modal) {
+        modal.classList.remove('active');
     }
 }
 
-function showAddModal() {
-    document.getElementById('modalTitle').textContent = 'Agregar Empleado';
-    document.getElementById('employeeForm').reset();
-    document.getElementById('empId').value = '';
-    document.getElementById('employeeModal').classList.add('active');
+function setupModalCloseEvents() {
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', function (event) {
+            if (event.target === modal) {
+                modal.classList.remove('active');
+            }
+        });
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            document.querySelectorAll('.modal.active').forEach(modal => {
+                modal.classList.remove('active');
+            });
+
+            closeMenu();
+        }
+    });
 }
 
-function closeModal() {
-    document.getElementById('employeeModal').classList.remove('active');
-}
+/* =========================
+   IMPORTAR / EXPORTAR
+   ========================= */
 
 function exportData() {
-    const data = JSON.stringify(employees, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'empleados.json';
-    a.click();
+    downloadJSON(employees, 'empleados');
 }
 
 function exportRoutes() {
-    const data = JSON.stringify(routes, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'rutas.json';
-    a.click();
+    downloadJSON(routes, 'rutas');
+}
+
+function downloadJSON(data, filename) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: 'application/json'
+    });
+
+    const link = document.createElement('a');
+
+    link.href = URL.createObjectURL(blob);
+    link.download = filename + '_' + getDateFileName() + '.json';
+    link.click();
+
+    URL.revokeObjectURL(link.href);
 }
 
 function importData() {
     const input = document.createElement('input');
+
     input.type = 'file';
     input.accept = '.json';
-    input.onchange = e => {
-        const file = e.target.files[0];
+
+    input.addEventListener('change', function (event) {
+        const file = event.target.files[0];
+
+        if (!file) return;
+
         const reader = new FileReader();
-        reader.onload = ev => {
+
+        reader.onload = function (readerEvent) {
             try {
-                employees = JSON.parse(ev.target.result);
-                employeesDatabase = employees;
-                renderEmployees();
-            } catch (err) {
-                alert('Error al importar');
+                const importedEmployees = JSON.parse(readerEvent.target.result);
+
+                if (!Array.isArray(importedEmployees)) {
+                    alert('El archivo no contiene una lista valida de empleados.');
+                    return;
+                }
+
+                employees = importedEmployees;
+                saveEmployees(employees);
+                renderAll();
+
+                alert('Empleados importados correctamente.');
+            } catch (error) {
+                alert('No se pudo importar el archivo.');
             }
         };
+
         reader.readAsText(file);
-    };
+    });
+
     input.click();
 }
 
 function clearAllData() {
-    if (confirm('Esto eliminara todas las rutas y reportes. Continuar?')) {
-        localStorage.removeItem('supply_routes');
-        localStorage.removeItem('supply_reports');
-        routes = [];
-        loadRoutes();
-        renderRoutes();
-        renderActiveRoutes();
-        alert('Datos limpiados');
+    if (!confirm('Deseas eliminar rutas, reportes, documentos y actividades?')) {
+        return;
+    }
+
+    localStorage.removeItem('supply_routes');
+    localStorage.removeItem('supply_reports');
+    localStorage.removeItem('supply_documents');
+    localStorage.removeItem('supply_activities');
+
+    routes = [];
+    updateFleetStatus();
+    renderAll();
+
+    alert('Datos limpiados correctamente.');
+}
+
+/* =========================
+   SINCRONIZACION EN TIEMPO REAL LOCAL
+   ========================= */
+
+function syncAll() {
+    loadAllData();
+    renderAll();
+}
+
+function startPolling() {
+    if (pollingInterval) {
+        clearInterval(pollingInterval);
+    }
+
+    pollingInterval = setInterval(function () {
+        loadAllData();
+        renderAll();
+    }, 5000);
+
+    window.addEventListener('storage', function (event) {
+        const watchedKeys = [
+            'supply_employees',
+            'supply_routes',
+            'supply_fleet',
+            'supply_reports',
+            'supply_documents',
+            'supply_activities'
+        ];
+
+        if (watchedKeys.includes(event.key)) {
+            loadAllData();
+            renderAll();
+        }
+    });
+}
+
+function updateSyncTime() {
+    const element = document.getElementById('syncTime');
+
+    if (!element) return;
+
+    element.textContent = new Date().toLocaleTimeString('es-PE', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+}
+
+/* =========================
+   UTILIDADES
+   ========================= */
+
+function getInputValue(id) {
+    const element = document.getElementById(id);
+
+    if (!element) return '';
+
+    return element.value.trim();
+}
+
+function setInputValue(id, value) {
+    const element = document.getElementById(id);
+
+    if (element) {
+        element.value = value || '';
     }
 }
 
-document.getElementById('logoutBtn')?.addEventListener('click', logout);
+function generateEmployeeId() {
+    const numbers = employees
+        .map(employee => Number(String(employee.id).replace(/\D/g, '')))
+        .filter(number => !Number.isNaN(number));
 
-window.showAddModal = showAddModal;
+    const next = numbers.length ? Math.max(...numbers) + 1 : 1;
+
+    return 'EMP' + String(next).padStart(3, '0');
+}
+
+function generateRouteId() {
+    return 'R' + new Date().getTime();
+}
+
+function getDateFileName() {
+    return new Date().toISOString().split('T')[0];
+}
+
+function escapeHTML(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+/* =========================
+   FUNCIONES GLOBALES PARA HTML
+   ========================= */
+
+window.showAddEmployee = showAddEmployee;
 window.editEmployee = editEmployee;
 window.deleteEmployee = deleteEmployee;
-window.closeModal = closeModal;
-window.assignRouteTo = assignRouteTo;
+window.quickAssign = quickAssign;
+
 window.showRouteModal = showRouteModal;
-window.closeRouteModal = closeRouteModal;
-window.addStop = addStop;
-window.removeStop = removeStop;
+window.addStopRow = addStopRow;
+window.startRoute = startRoute;
+window.advanceRoute = advanceRoute;
 window.cancelRoute = cancelRoute;
-window.viewRoute = viewRoute;
+window.viewRouteDetail = viewRouteDetail;
+
+window.closeModal = closeModal;
+
 window.approveReport = approveReport;
 window.rejectReport = rejectReport;
+
 window.exportData = exportData;
 window.exportRoutes = exportRoutes;
 window.importData = importData;
 window.clearAllData = clearAllData;
+window.syncAll = syncAll;

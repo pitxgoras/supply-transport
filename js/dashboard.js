@@ -1,644 +1,1386 @@
-// DASHBOARD - MAPA Y TIEMPO REAL
+/* =========================================================
+   DASHBOARD JS - FUNCIONAL Y CONECTADO AL ADMIN
+   Sistema: Supply Transport
+   ========================================================= */
+
+/* =========================
+   VARIABLES GLOBALES
+   ========================= */
 
 let session = null;
-let currentRoute = null;
-let deliveries = [];
+let myRoutes = [];
 let documents = [];
 let reports = [];
-let map = null;
-let routeLayer = null;
-let currentLocationMarker = null;
-let watchId = null;
+let currentViewRoute = null;
+let mapInstance = null;
+let pollingInterval = null;
 
-document.addEventListener('DOMContentLoaded', function() {
-    session = checkSession();
-    if (!session) return;
+/* =========================
+   INICIO
+   ========================= */
+
+document.addEventListener('DOMContentLoaded', function () {
+    session = getCurrentSession();
+
+    if (!session) {
+        window.location.href = 'login.html';
+        return;
+    }
+
     if (session.role === 'admin' || session.role === 'manager') {
         window.location.href = 'admin.html';
         return;
     }
-    
+
     initUI();
-    loadData();
+    loadAllData();
     setupNavigation();
+    setupTabs();
     setupModals();
     setupForms();
-    setupRealtime();
-    updateTime();
-    setInterval(updateTime, 1000);
-    setInterval(refreshData, 30000); // Actualizar cada 30 segundos
+    setupButtons();
+    startPolling();
 });
 
+/* =========================
+   SESION
+   ========================= */
+
+function getCurrentSession() {
+    if (typeof checkSession === 'function') {
+        return checkSession();
+    }
+
+    const possibleKeys = [
+        'supply_session',
+        'session',
+        'currentUser'
+    ];
+
+    for (const key of possibleKeys) {
+        const saved = localStorage.getItem(key);
+
+        if (saved) {
+            try {
+                return JSON.parse(saved);
+            } catch (error) {
+                return null;
+            }
+        }
+    }
+
+    return null;
+}
+
+function logoutUser() {
+    if (typeof logout === 'function') {
+        logout();
+        return;
+    }
+
+    localStorage.removeItem('supply_session');
+    localStorage.removeItem('session');
+    localStorage.removeItem('currentUser');
+
+    window.location.href = 'login.html';
+}
+
+/* =========================
+   UI GENERAL
+   ========================= */
+
 function initUI() {
-    document.getElementById('userName').textContent = session.name;
-    document.getElementById('userRole').textContent = formatRole(session.role);
-    document.getElementById('userAvatar').textContent = session.name.charAt(0).toUpperCase();
-    
-    const toggle = document.getElementById('menuToggle');
+    setText('profileName', session.name || 'Usuario');
+    setText('profileRole', formatRole(session.role || 'operator'));
+    setText('profileAvatar', (session.name || 'U').charAt(0).toUpperCase());
+    setText('statusText', 'En linea');
+
+    const menuBtn = document.getElementById('menuBtn');
+    const sidebarClose = document.getElementById('sidebarClose');
+    const overlay = document.getElementById('overlay');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    if (menuBtn) {
+        menuBtn.addEventListener('click', openMenu);
+    }
+
+    if (sidebarClose) {
+        sidebarClose.addEventListener('click', closeMenu);
+    }
+
+    if (overlay) {
+        overlay.addEventListener('click', closeMenu);
+    }
+
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', logoutUser);
+    }
+}
+
+function openMenu() {
     const sidebar = document.getElementById('sidebar');
-    const close = document.getElementById('sidebarClose');
-    
-    if (toggle) toggle.addEventListener('click', () => sidebar.classList.add('active'));
-    if (close) close.addEventListener('click', () => sidebar.classList.remove('active'));
-    
-    document.getElementById('refreshBtn').addEventListener('click', refreshData);
+    const overlay = document.getElementById('overlay');
+
+    if (sidebar) sidebar.classList.add('active');
+    if (overlay) overlay.classList.add('active');
+}
+
+function closeMenu() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+
+    if (sidebar) sidebar.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+}
+
+function setText(id, value) {
+    const element = document.getElementById(id);
+
+    if (element) {
+        element.textContent = value;
+    }
+}
+
+function getValue(id) {
+    const element = document.getElementById(id);
+
+    if (!element) return '';
+
+    return element.value.trim();
 }
 
 function formatRole(role) {
-    const r = { admin: 'Admin', manager: 'Gerente', supervisor: 'Supervisor', operator: 'Operador' };
-    return r[role] || role;
+    const roles = {
+        admin: 'Admin',
+        manager: 'Gerente',
+        supervisor: 'Supervisor',
+        operator: 'Operador'
+    };
+
+    return roles[role] || role;
 }
 
-function updateTime() {
-    document.getElementById('currentTime').textContent = new Date().toLocaleString('es-MX');
-    document.getElementById('lastUpdate').textContent = 'Actualizado: ' + new Date().toLocaleTimeString('es-MX');
+function formatStatus(status) {
+    const statuses = {
+        pending: 'Pendiente',
+        'in-progress': 'En Progreso',
+        completed: 'Completada',
+        cancelled: 'Cancelada',
+        approved: 'Aprobado',
+        rejected: 'Rechazado'
+    };
+
+    return statuses[status] || status;
 }
 
-function loadData() {
-    loadUserRoute();
-    loadDeliveries();
+function escapeHTML(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+/* =========================
+   CARGA GENERAL
+   ========================= */
+
+function loadAllData() {
+    loadMyRoutes();
     loadDocuments();
     loadReports();
-}
-
-function loadUserRoute() {
-    const savedRoutes = localStorage.getItem('supply_routes');
-    const allRoutes = savedRoutes ? JSON.parse(savedRoutes) : [];
-    
-    // Buscar ruta asignada al operador actual
-    currentRoute = allRoutes.find(r => r.assignedTo === session.id && r.status !== 'completed');
-    
-    if (!currentRoute) {
-        // Crear ruta de ejemplo si no tiene
-        currentRoute = {
-            id: 'R' + Date.now(),
-            origin: 'Lima',
-            destination: 'Huacho',
-            distance: 148,
-            eta: '14:30',
-            status: 'pending',
-            progress: 0,
-            assignedTo: session.id,
-            operatorName: session.name,
-            stops: [
-                { address: 'Av. Argentina 123', client: 'Cliente A', completed: false },
-                { address: 'Av. Grau 456', client: 'Cliente B', completed: false }
-            ],
-            currentLocation: { lat: -12.0464, lng: -77.0428 }
-        };
-    }
-    
-    renderRouteInfo();
-    renderHomeRoute();
-}
-
-function renderRouteInfo() {
-    if (!currentRoute) return;
-    
-    document.getElementById('routeName').textContent = `Ruta ${currentRoute.origin} - ${currentRoute.destination}`;
-    document.getElementById('routeStatus').textContent = getStatusText(currentRoute.status);
-    document.getElementById('routeOrigin').textContent = currentRoute.origin;
-    document.getElementById('routeDestination').textContent = currentRoute.destination;
-    document.getElementById('routeDistance').textContent = currentRoute.distance + ' km';
-    document.getElementById('routeETA').textContent = currentRoute.eta || '--:--';
-    document.getElementById('routeProgress').textContent = currentRoute.progress || 0;
-    document.getElementById('progressFill').style.width = (currentRoute.progress || 0) + '%';
-    
-    // Habilitar/deshabilitar botones
-    const startBtn = document.getElementById('startRouteBtn');
-    const completeBtn = document.getElementById('completeRouteBtn');
-    
-    if (currentRoute.status === 'pending') {
-        startBtn.disabled = false;
-        completeBtn.disabled = true;
-    } else if (currentRoute.status === 'in-progress') {
-        startBtn.disabled = true;
-        completeBtn.disabled = false;
-    } else {
-        startBtn.disabled = true;
-        completeBtn.disabled = true;
-    }
-    
-    // Renderizar paradas
-    const stopsList = document.getElementById('stopsList');
-    if (stopsList && currentRoute.stops) {
-        stopsList.innerHTML = currentRoute.stops.map((stop, index) => `
-            <div class="stop-card ${stop.completed ? 'completed' : ''}">
-                <span class="stop-number">${index + 1}</span>
-                <div class="stop-info">
-                    <strong>${stop.client}</strong>
-                    <span>${stop.address}</span>
-                </div>
-                ${!stop.completed ? `<button class="btn-small" onclick="completeStop(${index})">Completar</button>` : 
-                    '<span class="badge-success">Completado</span>'}
-            </div>
-        `).join('');
-    }
-}
-
-function getStatusText(status) {
-    const s = { pending: 'Pendiente', 'in-progress': 'En Progreso', completed: 'Completado' };
-    return s[status] || status;
-}
-
-function renderHomeRoute() {
-    const container = document.getElementById('currentRouteInfo');
-    if (!container) return;
-    
-    if (!currentRoute) {
-        container.innerHTML = '<p class="no-route">No tienes ruta asignada</p>';
-        return;
-    }
-    
-    container.innerHTML = `
-        <div class="mini-route">
-            <div class="route-path">
-                <span>${currentRoute.origin}</span>
-                <span>→</span>
-                <span>${currentRoute.destination}</span>
-            </div>
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: ${currentRoute.progress || 0}%"></div>
-            </div>
-            <div class="route-meta">
-                <span>${currentRoute.distance} km</span>
-                <span>${currentRoute.progress || 0}% completado</span>
-            </div>
-        </div>
-    `;
-}
-
-function initMap() {
-    if (map) return;
-    
-    const defaultLoc = currentRoute?.currentLocation || { lat: -12.0464, lng: -77.0428 };
-    map = L.map('routeMap').setView([defaultLoc.lat, defaultLoc.lng], 8);
-    
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap'
-    }).addTo(map);
-    
-    drawRoute();
-}
-
-function drawRoute() {
-    if (!map || !currentRoute) return;
-    
-    // Limpiar capas anteriores
-    if (routeLayer) map.removeLayer(routeLayer);
-    if (currentLocationMarker) map.removeLayer(currentLocationMarker);
-    
-    // Definir puntos de la ruta
-    const points = [
-        currentRoute.currentLocation || { lat: -12.0464, lng: -77.0428 },
-        { lat: -11.1085, lng: -77.6103 } // Huacho (ejemplo)
-    ];
-    
-    // Dibujar linea de ruta
-    routeLayer = L.polyline(points, { color: '#e74c3c', weight: 4 }).addTo(map);
-    
-    // Marcador de posicion actual
-    currentLocationMarker = L.marker([points[0].lat, points[0].lng], {
-        title: 'Tu ubicacion actual'
-    }).addTo(map).bindPopup('Estas aqui').openPopup();
-    
-    // Marcador de destino
-    L.marker([points[1].lat, points[1].lng], {
-        title: 'Destino: ' + currentRoute.destination
-    }).addTo(map).bindPopup('Destino: ' + currentRoute.destination);
-    
-    // Ajustar vista
-    map.fitBounds(routeLayer.getBounds());
-}
-
-function startRoute() {
-    if (!currentRoute) return;
-    
-    currentRoute.status = 'in-progress';
-    currentRoute.startTime = new Date().toISOString();
-    saveRoutes();
-    
-    renderRouteInfo();
-    initMap();
-    
-    // Iniciar seguimiento GPS
-    startLocationTracking();
-}
-
-function completeRoute() {
-    if (!currentRoute) return;
-    
-    if (confirm('Confirmar que has completado la ruta?')) {
-        currentRoute.status = 'completed';
-        currentRoute.progress = 100;
-        currentRoute.completedTime = new Date().toISOString();
-        saveRoutes();
-        
-        renderRouteInfo();
-        stopLocationTracking();
-        
-        alert('Ruta completada!');
-    }
-}
-
-function startLocationTracking() {
-    if (navigator.geolocation) {
-        watchId = navigator.geolocation.watchPosition(
-            position => {
-                const newLoc = {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
-                };
-                updateCurrentLocation(newLoc);
-            },
-            error => console.error('Error GPS:', error),
-            { enableHighAccuracy: true, maximumAge: 10000 }
-        );
-    }
-}
-
-function stopLocationTracking() {
-    if (watchId) {
-        navigator.geolocation.clearWatch(watchId);
-        watchId = null;
-    }
-}
-
-function updateCurrentLocation(location) {
-    if (!currentRoute) return;
-    
-    currentRoute.currentLocation = location;
-    
-    // Calcular progreso basado en distancia
-    if (currentRoute.status === 'in-progress') {
-        // Simulacion de progreso
-        currentRoute.progress = Math.min(currentRoute.progress + 2, 99);
-    }
-    
-    saveRoutes();
-    
-    if (map && currentLocationMarker) {
-        currentLocationMarker.setLatLng([location.lat, location.lng]);
-    }
-    
-    renderRouteInfo();
-    renderHomeRoute();
-    
-    document.getElementById('syncStatus').textContent = 'Sincronizado';
-    document.getElementById('lastUpdate').textContent = 'Actualizado: ' + new Date().toLocaleTimeString('es-MX');
-}
-
-function showLocationPicker() {
-    const modal = document.getElementById('locationModal');
-    modal.classList.add('active');
-    
-    setTimeout(() => {
-        const pickerMap = L.map('locationPickerMap').setView([
-            currentRoute?.currentLocation?.lat || -12.0464,
-            currentRoute?.currentLocation?.lng || -77.0428
-        ], 13);
-        
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(pickerMap);
-        
-        let marker = L.marker([
-            currentRoute?.currentLocation?.lat || -12.0464,
-            currentRoute?.currentLocation?.lng || -77.0428
-        ], { draggable: true }).addTo(pickerMap);
-        
-        document.getElementById('confirmLocation').onclick = () => {
-            const pos = marker.getLatLng();
-            updateCurrentLocation({ lat: pos.lat, lng: pos.lng });
-            modal.classList.remove('active');
-            if (map) drawRoute();
-        };
-    }, 100);
-}
-
-function completeStop(index) {
-    if (!currentRoute?.stops) return;
-    
-    currentRoute.stops[index].completed = true;
-    currentRoute.stops[index].completedTime = new Date().toISOString();
-    
-    // Calcular progreso
-    const completed = currentRoute.stops.filter(s => s.completed).length;
-    currentRoute.progress = Math.round((completed / currentRoute.stops.length) * 100);
-    
-    saveRoutes();
-    renderRouteInfo();
-    renderHomeRoute();
-    loadDeliveries();
-}
-
-function loadDeliveries() {
-    deliveries = [];
-    if (currentRoute?.stops) {
-        deliveries = currentRoute.stops.map((stop, index) => ({
-            id: index,
-            client: stop.client,
-            address: stop.address,
-            status: stop.completed ? 'completed' : 'pending'
-        }));
-    }
-    
-    renderDeliveries();
     updateStats();
+    renderActiveRouteCard();
+    renderNextStopCard();
+    updateActivityTimeline();
+    updateNotificationBadge();
 }
 
-function renderDeliveries(filter = 'all') {
-    const container = document.getElementById('deliveriesFull');
-    if (!container) return;
-    
-    let filtered = deliveries;
-    if (filter === 'pending') filtered = deliveries.filter(d => !d.completed);
-    if (filter === 'completed') filtered = deliveries.filter(d => d.completed);
-    
-    if (filtered.length === 0) {
-        container.innerHTML = '<p class="no-data">No hay entregas</p>';
-        return;
-    }
-    
-    container.innerHTML = filtered.map(d => `
-        <div class="delivery-card ${d.status}" onclick="showDeliveryDetail(${d.id})">
-            <div class="delivery-header">
-                <span class="delivery-client">${d.client}</span>
-                <span class="status ${d.status}">${d.status === 'completed' ? 'Completado' : 'Pendiente'}</span>
-            </div>
-            <div class="delivery-address">${d.address}</div>
-        </div>
-    `).join('');
-}
+function loadMyRoutes() {
+    const allRoutes = getStorageArray('supply_routes');
 
-function showDeliveryDetail(id) {
-    const delivery = deliveries[id];
-    if (!delivery) return;
-    
-    const modal = document.getElementById('deliveryDetailModal');
-    const detail = document.getElementById('deliveryDetail');
-    
-    detail.innerHTML = `
-        <p><strong>Cliente:</strong> ${delivery.client}</p>
-        <p><strong>Direccion:</strong> ${delivery.address}</p>
-        <p><strong>Estado:</strong> ${delivery.status === 'completed' ? 'Completado' : 'Pendiente'}</p>
-    `;
-    
-    document.getElementById('completeDeliveryBtn').onclick = () => {
-        completeStop(id);
-        modal.classList.remove('active');
-    };
-    
-    modal.classList.add('active');
-}
+    myRoutes = allRoutes.filter(route => {
+        return String(route.assignedTo) === String(session.id);
+    });
 
-function updateStats() {
-    const total = deliveries.length;
-    const completed = deliveries.filter(d => d.status === 'completed').length;
-    const pending = total - completed;
-    
-    document.getElementById('todayDeliveries').textContent = total;
-    document.getElementById('pendingDeliveries').textContent = pending;
-    document.getElementById('completedDeliveries').textContent = completed;
-    document.getElementById('efficiency').textContent = total > 0 ? Math.round((completed / total) * 100) + '%' : '0%';
+    renderRoutesList();
 }
 
 function loadDocuments() {
-    const saved = localStorage.getItem('supply_documents');
-    documents = saved ? JSON.parse(saved) : [];
+    const allDocuments = getStorageArray('supply_documents');
+
+    documents = allDocuments.filter(documentItem => {
+        return String(documentItem.createdBy) === String(session.id);
+    });
+
     renderDocuments();
 }
 
-function renderDocuments() {
-    const container = document.getElementById('documentsGrid');
-    const filter = document.getElementById('docTypeFilter')?.value || 'all';
-    
-    if (!container) return;
-    
-    let filtered = filter === 'all' ? documents : documents.filter(d => d.type === filter);
-    
-    if (filtered.length === 0) {
-        container.innerHTML = '<p class="no-data">No hay documentos</p>';
-        return;
-    }
-    
-    container.innerHTML = filtered.map(d => `
-        <div class="doc-card">
-            <div class="doc-icon">${getDocIcon(d.type)}</div>
-            <div class="doc-info">
-                <span class="doc-name">${d.name}</span>
-                <span class="doc-type">${d.type}</span>
-                <span class="doc-date">${d.date}</span>
-            </div>
-        </div>
-    `).join('');
-}
-
-function getDocIcon(type) {
-    const i = { factura: '📄', guia: '📋', foto_carga: '📷', foto_entrega: '📸' };
-    return i[type] || '📎';
-}
-
 function loadReports() {
-    const saved = localStorage.getItem('supply_reports');
-    reports = saved ? JSON.parse(saved) : [];
+    const allReports = getStorageArray('supply_reports');
+
+    reports = allReports.filter(report => {
+        return String(report.createdBy) === String(session.id);
+    });
+
     renderReports();
 }
 
-function renderReports() {
-    const container = document.getElementById('reportsList');
-    const filter = document.getElementById('reportFilter')?.value || 'all';
-    
+function getStorageArray(key) {
+    const saved = localStorage.getItem(key);
+
+    if (!saved) {
+        return [];
+    }
+
+    try {
+        const parsed = JSON.parse(saved);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+        return [];
+    }
+}
+
+function saveStorageArray(key, data) {
+    localStorage.setItem(key, JSON.stringify(data));
+}
+
+/* =========================
+   DASHBOARD HOME
+   ========================= */
+
+function getActiveRoute() {
+    return myRoutes.find(route => route.status === 'in-progress') ||
+        myRoutes.find(route => route.status === 'pending') ||
+        null;
+}
+
+function renderActiveRouteCard() {
+    const container = document.getElementById('activeRouteCard');
+
     if (!container) return;
-    
-    const userReports = reports.filter(r => r.createdBy === session.id);
-    let filtered = filter === 'all' ? userReports : userReports.filter(r => r.status === filter);
-    
-    if (filtered.length === 0) {
-        container.innerHTML = '<p class="no-data">No hay reportes</p>';
+
+    const activeRoute = getActiveRoute();
+
+    if (!activeRoute) {
+        container.innerHTML = `
+            <p style="color:#999;text-align:center;padding:20px;">Sin ruta activa asignada</p>
+        `;
         return;
     }
-    
-    container.innerHTML = filtered.map(r => `
-        <div class="report-card ${r.status}">
-            <div class="report-header">
-                <span class="report-id">${r.id}</span>
-                <span class="report-status ${r.status}">${getReportStatus(r.status)}</span>
+
+    container.innerHTML = `
+        <div class="route-card-header">
+            <div>
+                <div class="route-name">${escapeHTML(activeRoute.origin)} - ${escapeHTML(activeRoute.destination)}</div>
+                <small>Ruta ${escapeHTML(activeRoute.id)}</small>
             </div>
-            <p><strong>Tipo:</strong> ${r.type}</p>
-            <p>${r.description}</p>
-            <small>${r.date}</small>
-            ${r.response ? `<div class="report-response">Respuesta: ${r.response}</div>` : ''}
+
+            <span class="route-badge ${escapeHTML(activeRoute.status)}">
+                ${formatStatus(activeRoute.status)}
+            </span>
         </div>
-    `).join('');
+
+        <div class="progress-bar">
+            <div class="progress-fill" style="width:${Number(activeRoute.progress || 0)}%"></div>
+        </div>
+
+        <div class="route-meta">
+            <span>${Number(activeRoute.distance || 0)} km</span>
+            <span>${Number(activeRoute.progress || 0)}%</span>
+            <span>ETA: ${escapeHTML(activeRoute.eta || '--:--')}</span>
+        </div>
+
+        <div style="margin-top:14px;">
+            <button class="btn-primary full-width" type="button" onclick="viewRouteDetail('${activeRoute.id}')">
+                Ver Ruta
+            </button>
+        </div>
+    `;
 }
 
-function getReportStatus(status) {
-    const s = { pending: 'Pendiente', approved: 'Aprobado', rejected: 'Rechazado' };
-    return s[status] || status;
-}
+function renderNextStopCard() {
+    const container = document.getElementById('nextStopCard');
 
-function saveRoutes() {
-    const saved = localStorage.getItem('supply_routes');
-    let routes = saved ? JSON.parse(saved) : [];
-    
-    const index = routes.findIndex(r => r.id === currentRoute.id);
-    if (index !== -1) {
-        routes[index] = currentRoute;
-    } else {
-        routes.push(currentRoute);
+    if (!container) return;
+
+    const activeRoute = getActiveRoute();
+
+    if (!activeRoute || !Array.isArray(activeRoute.stops) || activeRoute.stops.length === 0) {
+        container.innerHTML = `
+            <p style="color:#999;text-align:center;padding:20px;">Sin entregas pendientes</p>
+        `;
+        return;
     }
-    
-    localStorage.setItem('supply_routes', JSON.stringify(routes));
-}
 
-function refreshData() {
-    document.getElementById('syncStatus').textContent = 'Sincronizando...';
-    
-    const saved = localStorage.getItem('supply_routes');
-    if (saved) {
-        const routes = JSON.parse(saved);
-        const updated = routes.find(r => r.id === currentRoute?.id);
-        if (updated) currentRoute = updated;
+    const nextStop = activeRoute.stops.find(stop => !stop.completed);
+
+    if (!nextStop) {
+        container.innerHTML = `
+            <p style="color:#999;text-align:center;padding:20px;">Todas las entregas fueron completadas</p>
+        `;
+        return;
     }
-    
-    loadDeliveries();
-    renderRouteInfo();
-    renderHomeRoute();
-    if (map) drawRoute();
-    
-    document.getElementById('syncStatus').textContent = 'Sincronizado';
-    document.getElementById('lastUpdate').textContent = 'Actualizado: ' + new Date().toLocaleTimeString('es-MX');
+
+    const stopIndex = activeRoute.stops.findIndex(stop => stop === nextStop);
+
+    container.innerHTML = `
+        <div class="stop-item">
+            <div class="stop-num">${stopIndex + 1}</div>
+
+            <div class="stop-detail">
+                <strong>${escapeHTML(nextStop.client || 'Cliente')}</strong>
+                <small>${escapeHTML(nextStop.address || 'Direccion no registrada')}</small>
+            </div>
+        </div>
+
+        <button class="btn-primary full-width" type="button" onclick="completeStop('${activeRoute.id}', ${stopIndex})">
+            Completar Entrega
+        </button>
+    `;
 }
 
-function setupNavigation() {
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-            this.classList.add('active');
-            
-            const page = this.dataset.page;
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.getElementById(page).classList.add('active');
-            
-            document.getElementById('pageTitle').textContent = this.textContent;
-            document.getElementById('sidebar').classList.remove('active');
-            
-            if (page === 'route' && !map) {
-                setTimeout(initMap, 100);
+function updateStats() {
+    const allStops = getAllStops();
+    const total = allStops.length;
+    const done = allStops.filter(stop => stop.completed).length;
+    const pending = total - done;
+    const efficiency = total > 0 ? Math.round((done / total) * 100) : 0;
+
+    setText('statToday', total);
+    setText('statPending', pending);
+    setText('statDone', done);
+    setText('statEfficiency', efficiency + '%');
+}
+
+function updateNotificationBadge() {
+    const pendingRoutes = myRoutes.filter(route => route.status === 'pending').length;
+    const pendingReports = reports.filter(report => report.status === 'pending').length;
+
+    setText('notificationBadge', pendingRoutes + pendingReports);
+}
+
+/* =========================
+   RUTAS
+   ========================= */
+
+function renderRoutesList(filter = getActiveTabFilter('routes')) {
+    const container = document.getElementById('routesList');
+
+    if (!container) return;
+
+    let filteredRoutes = [...myRoutes];
+
+    if (filter !== 'all') {
+        filteredRoutes = filteredRoutes.filter(route => route.status === filter);
+    }
+
+    if (filteredRoutes.length === 0) {
+        container.innerHTML = `
+            <p style="color:#999;text-align:center;padding:30px;">No hay rutas para mostrar</p>
+        `;
+        return;
+    }
+
+    container.innerHTML = filteredRoutes.map(route => {
+        return `
+            <div class="route-card" onclick="viewRouteDetail('${route.id}')">
+                <div class="route-card-header">
+                    <div>
+                        <div class="route-name">${escapeHTML(route.origin)} - ${escapeHTML(route.destination)}</div>
+                        <small>Ruta ${escapeHTML(route.id)}</small>
+                    </div>
+
+                    <span class="route-badge ${escapeHTML(route.status)}">
+                        ${formatStatus(route.status)}
+                    </span>
+                </div>
+
+                <div class="route-path-display">
+                    <span>${escapeHTML(route.origin)}</span>
+                    <span class="route-arrow">-</span>
+                    <span>${escapeHTML(route.destination)}</span>
+                </div>
+
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width:${Number(route.progress || 0)}%"></div>
+                </div>
+
+                <div class="route-meta">
+                    <span>${Number(route.distance || 0)} km</span>
+                    <span>${Number(route.progress || 0)}%</span>
+                    <span>ETA: ${escapeHTML(route.eta || '--:--')}</span>
+                    <span>${Array.isArray(route.stops) ? route.stops.length : 0} entregas</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function viewRouteDetail(routeId) {
+    const route = myRoutes.find(item => item.id === routeId);
+
+    if (!route) return;
+
+    currentViewRoute = route;
+
+    const routesList = document.getElementById('routesList');
+    const detailView = document.getElementById('routeDetailView');
+
+    if (routesList) routesList.classList.add('hidden');
+    if (detailView) detailView.classList.remove('hidden');
+
+    renderRouteDetail();
+    initMap();
+
+    showPage('routes');
+}
+
+function renderRouteDetail() {
+    const panel = document.getElementById('routeInfoPanel');
+
+    if (!panel || !currentViewRoute) return;
+
+    const stops = Array.isArray(currentViewRoute.stops) ? currentViewRoute.stops : [];
+
+    panel.innerHTML = `
+        <div class="route-card-header">
+            <div>
+                <h3>${escapeHTML(currentViewRoute.origin)} - ${escapeHTML(currentViewRoute.destination)}</h3>
+                <small>Ruta ${escapeHTML(currentViewRoute.id)}</small>
+            </div>
+
+            <span class="route-badge ${escapeHTML(currentViewRoute.status)}">
+                ${formatStatus(currentViewRoute.status)}
+            </span>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" style="width:${Number(currentViewRoute.progress || 0)}%"></div>
+        </div>
+
+        <div class="route-meta" style="margin-bottom:18px;">
+            <span>Distancia: ${Number(currentViewRoute.distance || 0)} km</span>
+            <span>ETA: ${escapeHTML(currentViewRoute.eta || '--:--')}</span>
+            <span>Progreso: ${Number(currentViewRoute.progress || 0)}%</span>
+        </div>
+
+        <h3 style="margin-bottom:12px;">Paradas Programadas</h3>
+
+        ${
+            stops.length === 0
+                ? '<p style="color:#999;">Sin paradas registradas</p>'
+                : stops.map((stop, index) => {
+                    return `
+                        <div class="stop-item">
+                            <div class="stop-num">${index + 1}</div>
+
+                            <div class="stop-detail">
+                                <strong>${escapeHTML(stop.client || 'Cliente')}</strong>
+                                <small>${escapeHTML(stop.address || 'Direccion no registrada')}</small>
+                            </div>
+
+                            ${
+                                stop.completed
+                                    ? '<span class="delivery-status completed">Completada</span>'
+                                    : `<button class="btn-stop" type="button" onclick="completeStop('${currentViewRoute.id}', ${index})">Completar</button>`
+                            }
+                        </div>
+                    `;
+                }).join('')
+        }
+
+        <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
+            ${
+                currentViewRoute.status === 'pending'
+                    ? `<button class="btn-primary" type="button" onclick="startRoute('${currentViewRoute.id}')">Iniciar Ruta</button>`
+                    : ''
             }
-        });
-    });
-    
-    // Filtros de entregas
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            renderDeliveries(this.dataset.filter);
-        });
-    });
+
+            ${
+                currentViewRoute.status === 'in-progress'
+                    ? `<button class="btn-primary" type="button" onclick="completeRoute('${currentViewRoute.id}')">Completar Ruta</button>`
+                    : ''
+            }
+        </div>
+    `;
 }
 
-function setupModals() {
-    // Botones
-    document.getElementById('startRouteBtn').addEventListener('click', startRoute);
-    document.getElementById('completeRouteBtn').addEventListener('click', completeRoute);
-    document.getElementById('updateLocationBtn').addEventListener('click', showLocationPicker);
-    document.getElementById('uploadDocBtn').addEventListener('click', () => document.getElementById('uploadModal').classList.add('active'));
-    document.getElementById('takePhotoBtn').addEventListener('click', takePhoto);
-    document.getElementById('uploadFileBtn').addEventListener('click', () => document.getElementById('uploadModal').classList.add('active'));
-    document.getElementById('newReportBtn').addEventListener('click', () => document.getElementById('reportModal').classList.add('active'));
-    
-    // Cerrar modales
-    document.querySelectorAll('.modal-close').forEach(btn => {
-        btn.addEventListener('click', function() {
-            this.closest('.modal').classList.remove('active');
-        });
-    });
-    
-    // Filtros
-    document.getElementById('docTypeFilter')?.addEventListener('change', renderDocuments);
-    document.getElementById('reportFilter')?.addEventListener('change', renderReports);
+function startRoute(routeId) {
+    updateRouteStatus(routeId, 'in-progress');
+    addActivity('Ruta iniciada');
+    refreshAfterRouteChange(routeId);
 }
 
-function setupForms() {
-    document.getElementById('uploadForm')?.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const file = document.getElementById('docFile').files[0];
-        if (!file) return;
-        
-        const doc = {
-            id: Date.now(),
-            name: file.name,
-            type: document.getElementById('docType').value,
-            description: document.getElementById('docDesc').value,
-            date: new Date().toLocaleDateString('es-MX'),
-            createdBy: session.id
-        };
-        
-        documents.push(doc);
-        localStorage.setItem('supply_documents', JSON.stringify(documents));
-        renderDocuments();
-        
-        this.reset();
-        document.getElementById('uploadModal').classList.remove('active');
+function completeRoute(routeId) {
+    if (!confirm('Confirmar que has completado toda la ruta?')) {
+        return;
+    }
+
+    const allRoutes = getStorageArray('supply_routes');
+    const index = allRoutes.findIndex(route => route.id === routeId);
+
+    if (index === -1) return;
+
+    allRoutes[index].status = 'completed';
+    allRoutes[index].progress = 100;
+    allRoutes[index].completedAt = new Date().toISOString();
+
+    if (Array.isArray(allRoutes[index].stops)) {
+        allRoutes[index].stops = allRoutes[index].stops.map(stop => {
+            return {
+                ...stop,
+                completed: true,
+                completedAt: stop.completedAt || new Date().toISOString()
+            };
+        });
+    }
+
+    saveStorageArray('supply_routes', allRoutes);
+    addActivity('Ruta completada');
+    refreshAfterRouteChange(routeId);
+}
+
+function completeStop(routeId, stopIndex) {
+    const allRoutes = getStorageArray('supply_routes');
+    const routeIndex = allRoutes.findIndex(route => route.id === routeId);
+
+    if (routeIndex === -1) return;
+
+    const route = allRoutes[routeIndex];
+
+    if (!Array.isArray(route.stops) || !route.stops[stopIndex]) {
+        return;
+    }
+
+    route.stops[stopIndex].completed = true;
+    route.stops[stopIndex].completedAt = new Date().toISOString();
+
+    const totalStops = route.stops.length;
+    const completedStops = route.stops.filter(stop => stop.completed).length;
+
+    route.progress = totalStops > 0 ? Math.round((completedStops / totalStops) * 100) : 0;
+
+    if (route.status === 'pending') {
+        route.status = 'in-progress';
+        route.startedAt = new Date().toISOString();
+    }
+
+    if (route.progress >= 100) {
+        route.status = 'completed';
+        route.completedAt = new Date().toISOString();
+    }
+
+    route.updatedAt = new Date().toISOString();
+
+    allRoutes[routeIndex] = route;
+    saveStorageArray('supply_routes', allRoutes);
+
+    addActivity('Entrega completada: ' + (route.stops[stopIndex].client || 'Cliente'));
+    refreshAfterRouteChange(routeId);
+}
+
+function updateRouteStatus(routeId, status) {
+    const allRoutes = getStorageArray('supply_routes');
+    const index = allRoutes.findIndex(route => route.id === routeId);
+
+    if (index === -1) return;
+
+    allRoutes[index].status = status;
+    allRoutes[index].updatedAt = new Date().toISOString();
+
+    if (status === 'in-progress') {
+        allRoutes[index].startedAt = new Date().toISOString();
+    }
+
+    saveStorageArray('supply_routes', allRoutes);
+}
+
+function refreshAfterRouteChange(routeId) {
+    loadMyRoutes();
+
+    currentViewRoute = myRoutes.find(route => route.id === routeId) || null;
+
+    if (currentViewRoute) {
+        renderRouteDetail();
+        initMap();
+    }
+
+    renderActiveRouteCard();
+    renderNextStopCard();
+    renderDeliveriesList();
+    updateStats();
+    updateNotificationBadge();
+}
+
+/* =========================
+   MAPA DE RUTA
+   ========================= */
+
+function initMap() {
+    const mapElement = document.getElementById('routeMap');
+
+    if (!mapElement || !currentViewRoute || typeof L === 'undefined') {
+        return;
+    }
+
+    if (mapInstance) {
+        mapInstance.remove();
+        mapInstance = null;
+    }
+
+    const coords = getCityCoords(currentViewRoute.origin, currentViewRoute.destination);
+
+    mapInstance = L.map('routeMap').setView([coords.origin.lat, coords.origin.lng], 7);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: 'OpenStreetMap'
+    }).addTo(mapInstance);
+
+    const originMarker = L.marker([coords.origin.lat, coords.origin.lng])
+        .addTo(mapInstance)
+        .bindPopup('Origen: ' + escapeHTML(currentViewRoute.origin));
+
+    const destinationMarker = L.marker([coords.dest.lat, coords.dest.lng])
+        .addTo(mapInstance)
+        .bindPopup('Destino: ' + escapeHTML(currentViewRoute.destination));
+
+    const routeLine = L.polyline(
+        [
+            [coords.origin.lat, coords.origin.lng],
+            [coords.dest.lat, coords.dest.lng]
+        ],
+        {
+            color: '#e74c3c',
+            weight: 4,
+            opacity: 0.85
+        }
+    ).addTo(mapInstance);
+
+    const progress = Number(currentViewRoute.progress || 0) / 100;
+
+    const currentLat = coords.origin.lat + ((coords.dest.lat - coords.origin.lat) * progress);
+    const currentLng = coords.origin.lng + ((coords.dest.lng - coords.origin.lng) * progress);
+
+    L.circleMarker([currentLat, currentLng], {
+        radius: 8,
+        color: '#e74c3c',
+        fillColor: '#e74c3c',
+        fillOpacity: 1
+    }).addTo(mapInstance).bindPopup('Ubicacion actual');
+
+    mapInstance.fitBounds(routeLine.getBounds().pad(0.25));
+
+    setTimeout(function () {
+        mapInstance.invalidateSize();
+        originMarker.openPopup();
+        destinationMarker.closePopup();
+    }, 250);
+}
+
+function getCityCoords(origin, destination) {
+    const cities = {
+        Lima: { lat: -12.0464, lng: -77.0428 },
+        Arequipa: { lat: -16.4090, lng: -71.5375 },
+        Trujillo: { lat: -8.1150, lng: -79.0300 },
+        Chiclayo: { lat: -6.7714, lng: -79.8409 },
+        Piura: { lat: -5.1945, lng: -80.6328 },
+        Cusco: { lat: -13.5320, lng: -71.9675 },
+        Huancayo: { lat: -12.0651, lng: -75.2049 },
+        Ica: { lat: -14.0678, lng: -75.7286 },
+        Tacna: { lat: -18.0146, lng: -70.2536 },
+        Puno: { lat: -15.8402, lng: -70.0219 },
+        Huacho: { lat: -11.1085, lng: -77.6103 },
+        Chimbote: { lat: -9.0745, lng: -78.5936 },
+        Cajamarca: { lat: -7.1638, lng: -78.5003 },
+        Huaraz: { lat: -9.5333, lng: -77.5333 },
+        Ayacucho: { lat: -13.1588, lng: -74.2238 },
+        Iquitos: { lat: -3.7491, lng: -73.2538 },
+        Pucallpa: { lat: -8.3791, lng: -74.5539 },
+        Tarapoto: { lat: -6.4833, lng: -76.3667 }
+    };
+
+    return {
+        origin: cities[origin] || cities.Lima,
+        dest: cities[destination] || cities.Lima
+    };
+}
+
+/* =========================
+   ENTREGAS
+   ========================= */
+
+function getAllStops() {
+    const stops = [];
+
+    myRoutes.forEach(route => {
+        if (!Array.isArray(route.stops)) return;
+
+        route.stops.forEach((stop, index) => {
+            stops.push({
+                ...stop,
+                stopIndex: index,
+                routeId: route.id,
+                routeOrigin: route.origin,
+                routeDestination: route.destination,
+                routeStatus: route.status
+            });
+        });
     });
-    
-    document.getElementById('reportForm')?.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const report = {
-            id: 'REP' + Date.now(),
-            type: document.getElementById('reportType').value,
-            description: document.getElementById('reportDesc').value,
-            status: 'pending',
-            date: new Date().toLocaleDateString('es-MX'),
-            createdBy: session.id,
-            createdByName: session.name
-        };
-        
-        reports.push(report);
-        localStorage.setItem('supply_reports', JSON.stringify(reports));
-        renderReports();
-        
-        this.reset();
-        document.getElementById('reportModal').classList.remove('active');
-    });
+
+    return stops;
+}
+
+function renderDeliveriesList(filter = getActiveTabFilter('deliveries')) {
+    const container = document.getElementById('deliveriesList');
+
+    if (!container) return;
+
+    let stops = getAllStops();
+
+    if (filter === 'pending') {
+        stops = stops.filter(stop => !stop.completed);
+    }
+
+    if (filter === 'completed') {
+        stops = stops.filter(stop => stop.completed);
+    }
+
+    if (stops.length === 0) {
+        container.innerHTML = `
+            <p style="color:#999;text-align:center;padding:30px;">No hay entregas para mostrar</p>
+        `;
+        return;
+    }
+
+    container.innerHTML = stops.map(stop => {
+        return `
+            <div class="delivery-card" onclick="showDeliveryDetail('${stop.routeId}', ${stop.stopIndex})">
+                <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                    <strong>${escapeHTML(stop.client || 'Cliente')}</strong>
+                    <span class="delivery-status ${stop.completed ? 'completed' : 'pending'}">
+                        ${stop.completed ? 'Completada' : 'Pendiente'}
+                    </span>
+                </div>
+
+                <p style="font-size:13px;color:#666;margin-top:6px;">
+                    ${escapeHTML(stop.address || 'Direccion no registrada')}
+                </p>
+
+                <small>Ruta: ${escapeHTML(stop.routeOrigin)} - ${escapeHTML(stop.routeDestination)}</small>
+            </div>
+        `;
+    }).join('');
+}
+
+function showDeliveryDetail(routeId, stopIndex) {
+    const route = myRoutes.find(item => item.id === routeId);
+
+    if (!route || !Array.isArray(route.stops) || !route.stops[stopIndex]) {
+        return;
+    }
+
+    const stop = route.stops[stopIndex];
+    const container = document.getElementById('deliveryDetailContent');
+
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="stop-item">
+            <div class="stop-num">${stopIndex + 1}</div>
+
+            <div class="stop-detail">
+                <strong>${escapeHTML(stop.client || 'Cliente')}</strong>
+                <small>${escapeHTML(stop.address || 'Direccion no registrada')}</small>
+            </div>
+        </div>
+
+        <p><strong>Ruta:</strong> ${escapeHTML(route.origin)} - ${escapeHTML(route.destination)}</p>
+        <p><strong>Estado:</strong> ${stop.completed ? 'Completada' : 'Pendiente'}</p>
+
+        ${
+            stop.completed
+                ? `<p><strong>Completada:</strong> ${escapeHTML(formatDateTime(stop.completedAt))}</p>`
+                : `<button class="btn-primary full-width" type="button" onclick="completeStop('${route.id}', ${stopIndex}); closeModal('modalDeliveryDetail');">Completar Entrega</button>`
+        }
+    `;
+
+    openModal('modalDeliveryDetail');
+}
+
+/* =========================
+   DOCUMENTOS
+   ========================= */
+
+function renderDocuments() {
+    const container = document.getElementById('documentsGrid');
+
+    if (!container) return;
+
+    const filter = getValue('docTypeFilter') || 'all';
+
+    let filteredDocuments = [...documents];
+
+    if (filter !== 'all') {
+        filteredDocuments = filteredDocuments.filter(documentItem => documentItem.type === filter);
+    }
+
+    if (filteredDocuments.length === 0) {
+        container.innerHTML = `
+            <p style="color:#999;text-align:center;padding:30px;grid-column:1/-1;">No hay documentos registrados</p>
+        `;
+        return;
+    }
+
+    container.innerHTML = filteredDocuments.map(documentItem => {
+        return `
+            <div class="document-card">
+                <strong>${escapeHTML(documentItem.name || 'Documento')}</strong>
+                <p>Tipo: ${escapeHTML(formatDocumentType(documentItem.type))}</p>
+                <small>${escapeHTML(documentItem.date || '')}</small>
+
+                ${
+                    documentItem.description
+                        ? `<p style="margin-top:8px;">${escapeHTML(documentItem.description)}</p>`
+                        : ''
+                }
+            </div>
+        `;
+    }).join('');
+}
+
+function formatDocumentType(type) {
+    const types = {
+        foto: 'Foto',
+        factura: 'Factura',
+        guia: 'Guia'
+    };
+
+    return types[type] || type;
 }
 
 function takePhoto() {
     const input = document.createElement('input');
+
     input.type = 'file';
     input.accept = 'image/*';
     input.capture = 'environment';
-    input.onchange = function(e) {
-        const file = e.target.files[0];
-        if (file) {
-            const doc = {
-                id: Date.now(),
-                name: 'Foto_' + new Date().toLocaleTimeString().replace(/:/g, '-') + '.jpg',
-                type: 'foto_carga',
-                date: new Date().toLocaleDateString('es-MX'),
-                createdBy: session.id
-            };
-            documents.push(doc);
-            localStorage.setItem('supply_documents', JSON.stringify(documents));
-            renderDocuments();
-        }
-    };
+
+    input.addEventListener('change', function (event) {
+        const file = event.target.files[0];
+
+        if (!file) return;
+
+        const allDocuments = getStorageArray('supply_documents');
+
+        const documentItem = {
+            id: 'DOC' + Date.now(),
+            name: file.name || 'Foto_' + Date.now() + '.jpg',
+            type: 'foto',
+            description: 'Foto tomada desde el dashboard',
+            date: new Date().toLocaleDateString('es-PE'),
+            createdAt: new Date().toISOString(),
+            createdBy: session.id,
+            createdByName: session.name
+        };
+
+        allDocuments.push(documentItem);
+        saveStorageArray('supply_documents', allDocuments);
+
+        addActivity('Documento registrado: Foto');
+        loadDocuments();
+        updateNotificationBadge();
+    });
+
     input.click();
 }
 
-function setupRealtime() {
-    // Verificar si hay ruta en progreso para iniciar tracking
-    if (currentRoute?.status === 'in-progress') {
-        startLocationTracking();
+/* =========================
+   REPORTES
+   ========================= */
+
+function renderReports() {
+    const container = document.getElementById('reportsList');
+
+    if (!container) return;
+
+    const filter = getValue('reportStatusFilter') || 'all';
+
+    let filteredReports = [...reports];
+
+    if (filter !== 'all') {
+        filteredReports = filteredReports.filter(report => report.status === filter);
+    }
+
+    if (filteredReports.length === 0) {
+        container.innerHTML = `
+            <p style="color:#999;text-align:center;padding:30px;">No hay reportes registrados</p>
+        `;
+        return;
+    }
+
+    container.innerHTML = filteredReports.map(report => {
+        return `
+            <div class="report-card ${escapeHTML(report.status)}">
+                <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px;">
+                    <strong>${escapeHTML(report.id)}</strong>
+
+                    <span class="report-status ${escapeHTML(report.status)}">
+                        ${formatStatus(report.status)}
+                    </span>
+                </div>
+
+                <p><strong>Tipo:</strong> ${escapeHTML(formatReportType(report.type))}</p>
+                <p>${escapeHTML(report.description || '')}</p>
+                <small>${escapeHTML(report.date || '')}</small>
+
+                ${
+                    report.response
+                        ? `<p style="margin-top:10px;padding:10px;background:#f8f9fa;border-radius:8px;"><strong>Respuesta:</strong> ${escapeHTML(report.response)}</p>`
+                        : ''
+                }
+            </div>
+        `;
+    }).join('');
+}
+
+function formatReportType(type) {
+    const types = {
+        incidencia: 'Incidencia en Ruta',
+        retraso: 'Retraso',
+        danos: 'Danos en Carga',
+        accidente: 'Accidente',
+        otro: 'Otro'
+    };
+
+    return types[type] || type;
+}
+
+/* =========================
+   ACTIVIDAD
+   ========================= */
+
+function addActivity(description) {
+    const activities = getStorageArray('supply_activities');
+
+    activities.unshift({
+        id: 'ACT' + Date.now(),
+        time: new Date().toLocaleTimeString('es-PE'),
+        date: new Date().toLocaleDateString('es-PE'),
+        createdAt: new Date().toISOString(),
+        description,
+        desc: description,
+        userId: session.id,
+        user: session.name
+    });
+
+    saveStorageArray('supply_activities', activities.slice(0, 80));
+    updateActivityTimeline();
+}
+
+function updateActivityTimeline() {
+    const container = document.getElementById('activityTimeline');
+
+    if (!container) return;
+
+    const activities = getStorageArray('supply_activities')
+        .filter(activity => {
+            return String(activity.userId) === String(session.id) ||
+                String(activity.user) === String(session.name);
+        })
+        .slice(0, 10);
+
+    if (activities.length === 0) {
+        container.innerHTML = `
+            <p style="color:#999;">Sin actividad reciente</p>
+        `;
+        return;
+    }
+
+    container.innerHTML = activities.map(activity => {
+        return `
+            <div class="timeline-item">
+                <span>${escapeHTML(activity.description || activity.desc || '')}</span>
+                <span class="timeline-time">${escapeHTML(activity.date || '')} ${escapeHTML(activity.time || '')}</span>
+            </div>
+        `;
+    }).join('');
+}
+
+/* =========================
+   NAVEGACION
+   ========================= */
+
+function setupNavigation() {
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', function (event) {
+            event.preventDefault();
+
+            const pageId = this.dataset.page;
+
+            if (!pageId) return;
+
+            document.querySelectorAll('.nav-item').forEach(nav => {
+                nav.classList.remove('active');
+            });
+
+            this.classList.add('active');
+
+            showPage(pageId);
+            closeMenu();
+        });
+    });
+
+    const backToRoutes = document.getElementById('backToRoutes');
+
+    if (backToRoutes) {
+        backToRoutes.addEventListener('click', function () {
+            const detailView = document.getElementById('routeDetailView');
+            const routesList = document.getElementById('routesList');
+
+            if (detailView) detailView.classList.add('hidden');
+            if (routesList) routesList.classList.remove('hidden');
+
+            currentViewRoute = null;
+            renderRoutesList();
+        });
     }
 }
 
-document.getElementById('logoutBtn')?.addEventListener('click', logout);
+function showPage(pageId) {
+    document.querySelectorAll('.page').forEach(page => {
+        page.classList.remove('active');
+    });
 
-window.showDeliveryDetail = showDeliveryDetail;
+    const page = document.getElementById(pageId);
+
+    if (page) {
+        page.classList.add('active');
+    }
+
+    if (pageId === 'home') {
+        renderActiveRouteCard();
+        renderNextStopCard();
+        updateActivityTimeline();
+        updateStats();
+    }
+
+    if (pageId === 'routes') {
+        renderRoutesList();
+    }
+
+    if (pageId === 'deliveries') {
+        renderDeliveriesList();
+    }
+
+    if (pageId === 'documents') {
+        renderDocuments();
+    }
+
+    if (pageId === 'reports') {
+        renderReports();
+    }
+}
+
+/* =========================
+   TABS
+   ========================= */
+
+function setupTabs() {
+    document.querySelectorAll('.tabs-scroll').forEach(group => {
+        const section = group.closest('.page');
+
+        group.querySelectorAll('.tab-pill').forEach(tab => {
+            tab.addEventListener('click', function () {
+                group.querySelectorAll('.tab-pill').forEach(item => {
+                    item.classList.remove('active');
+                });
+
+                this.classList.add('active');
+
+                const filter = this.dataset.filter || 'all';
+
+                if (section && section.id === 'routes') {
+                    renderRoutesList(filter);
+                }
+
+                if (section && section.id === 'deliveries') {
+                    renderDeliveriesList(filter);
+                }
+            });
+        });
+    });
+}
+
+function getActiveTabFilter(sectionId) {
+    const activeTab = document.querySelector('#' + sectionId + ' .tab-pill.active');
+
+    return activeTab ? activeTab.dataset.filter || 'all' : 'all';
+}
+
+/* =========================
+   MODALES Y BOTONES
+   ========================= */
+
+function setupButtons() {
+    const refreshButton = document.getElementById('btnRefreshHome');
+    const syncButton = document.getElementById('syncBtn');
+
+    if (refreshButton) {
+        refreshButton.addEventListener('click', function () {
+            loadAllData();
+        });
+    }
+
+    if (syncButton) {
+        syncButton.addEventListener('click', function () {
+            loadAllData();
+            syncButton.textContent = 'OK';
+
+            setTimeout(function () {
+                syncButton.textContent = 'Sync';
+            }, 900);
+        });
+    }
+
+    const docTypeFilter = document.getElementById('docTypeFilter');
+    const reportStatusFilter = document.getElementById('reportStatusFilter');
+
+    if (docTypeFilter) {
+        docTypeFilter.addEventListener('change', renderDocuments);
+    }
+
+    if (reportStatusFilter) {
+        reportStatusFilter.addEventListener('change', renderReports);
+    }
+}
+
+function setupModals() {
+    const uploadButton = document.getElementById('btnUploadFile');
+    const takePhotoButton = document.getElementById('btnTakePhoto');
+    const newReportButton = document.getElementById('btnNewReport');
+
+    if (uploadButton) {
+        uploadButton.addEventListener('click', function () {
+            openModal('modalUpload');
+        });
+    }
+
+    if (takePhotoButton) {
+        takePhotoButton.addEventListener('click', takePhoto);
+    }
+
+    if (newReportButton) {
+        newReportButton.addEventListener('click', function () {
+            openModal('modalReport');
+        });
+    }
+
+    document.querySelectorAll('[data-close-modal]').forEach(button => {
+        button.addEventListener('click', function () {
+            closeModal(this.dataset.closeModal);
+        });
+    });
+
+    document.querySelectorAll('.modal-close').forEach(button => {
+        button.addEventListener('click', function () {
+            const modal = this.closest('.modal');
+
+            if (modal) {
+                modal.classList.remove('active');
+            }
+        });
+    });
+
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', function (event) {
+            if (event.target === modal) {
+                modal.classList.remove('active');
+            }
+        });
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            document.querySelectorAll('.modal.active').forEach(modal => {
+                modal.classList.remove('active');
+            });
+
+            closeMenu();
+        }
+    });
+}
+
+function openModal(id) {
+    const modal = document.getElementById(id);
+
+    if (modal) {
+        modal.classList.add('active');
+    }
+}
+
+function closeModal(id) {
+    const modal = document.getElementById(id);
+
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+/* =========================
+   FORMULARIOS
+   ========================= */
+
+function setupForms() {
+    const uploadForm = document.getElementById('formUpload');
+    const reportForm = document.getElementById('formReport');
+
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', saveDocumentFromForm);
+    }
+
+    if (reportForm) {
+        reportForm.addEventListener('submit', saveReportFromForm);
+    }
+}
+
+function saveDocumentFromForm(event) {
+    event.preventDefault();
+
+    const fileInput = document.getElementById('inputFile');
+    const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+    const type = getValue('inputDocType');
+    const description = getValue('inputDocDesc');
+
+    if (!file) {
+        alert('Selecciona un archivo.');
+        return;
+    }
+
+    if (!type) {
+        alert('Selecciona el tipo de documento.');
+        return;
+    }
+
+    const allDocuments = getStorageArray('supply_documents');
+
+    const documentItem = {
+        id: 'DOC' + Date.now(),
+        name: file.name,
+        type,
+        description,
+        date: new Date().toLocaleDateString('es-PE'),
+        createdAt: new Date().toISOString(),
+        createdBy: session.id,
+        createdByName: session.name
+    };
+
+    allDocuments.push(documentItem);
+    saveStorageArray('supply_documents', allDocuments);
+
+    event.target.reset();
+    closeModal('modalUpload');
+
+    addActivity('Documento registrado: ' + formatDocumentType(type));
+    loadDocuments();
+    updateNotificationBadge();
+}
+
+function saveReportFromForm(event) {
+    event.preventDefault();
+
+    const type = getValue('inputReportType');
+    const description = getValue('inputReportDesc');
+    const imageInput = document.getElementById('inputReportImage');
+    const image = imageInput && imageInput.files ? imageInput.files[0] : null;
+
+    if (!type || !description) {
+        alert('Completa el tipo y la descripcion del reporte.');
+        return;
+    }
+
+    const allReports = getStorageArray('supply_reports');
+
+    const report = {
+        id: 'REP' + Date.now(),
+        type,
+        description,
+        status: 'pending',
+        date: new Date().toLocaleDateString('es-PE'),
+        createdAt: new Date().toISOString(),
+        createdBy: session.id,
+        createdByName: session.name,
+        imageName: image ? image.name : '',
+        response: null
+    };
+
+    allReports.push(report);
+    saveStorageArray('supply_reports', allReports);
+
+    event.target.reset();
+    closeModal('modalReport');
+
+    addActivity('Reporte enviado: ' + formatReportType(type));
+    loadReports();
+    updateNotificationBadge();
+}
+
+/* =========================
+   TIEMPO REAL LOCAL
+   ========================= */
+
+function startPolling() {
+    if (pollingInterval) {
+        clearInterval(pollingInterval);
+    }
+
+    pollingInterval = setInterval(function () {
+        loadAllData();
+
+        if (currentViewRoute) {
+            currentViewRoute = myRoutes.find(route => route.id === currentViewRoute.id) || currentViewRoute;
+            renderRouteDetail();
+        }
+    }, 5000);
+
+    window.addEventListener('storage', function (event) {
+        const keys = [
+            'supply_routes',
+            'supply_documents',
+            'supply_reports',
+            'supply_activities'
+        ];
+
+        if (keys.includes(event.key)) {
+            loadAllData();
+        }
+    });
+}
+
+/* =========================
+   FECHAS
+   ========================= */
+
+function formatDateTime(value) {
+    if (!value) return '';
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return value;
+    }
+
+    return date.toLocaleString('es-PE');
+}
+
+/* =========================
+   FUNCIONES GLOBALES
+   ========================= */
+
+window.viewRouteDetail = viewRouteDetail;
+window.startRoute = startRoute;
+window.completeRoute = completeRoute;
 window.completeStop = completeStop;
+window.showDeliveryDetail = showDeliveryDetail;
+window.closeModal = closeModal;
